@@ -2,11 +2,11 @@ using MiseRecipeExtractor.Core.ValueObjects;
 
 namespace MiseRecipeExtractor.Core.Entities;
 
-public class Step
+public class Step(int order, LocalizedText text, int? durationSeconds = null, bool orderIsInferred = false)
 {
-    Guid Id { get; set; }
-    public int Order { get; set; }
-    public LocalizedText Text { get; set; } = null!;
-    public int? DurationSeconds { get; set; }
-    public bool OrderIsInferred { get; set; }
+    public Guid Id { get; } = Guid.NewGuid();
+    public int Order { get; set; } = order;
+    public LocalizedText Text { get; } = text;
+    public int? DurationSeconds { get; set; } = durationSeconds;
+    public bool OrderIsInferred { get; set; } = orderIsInferred;
 }

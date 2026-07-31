@@ -1,9 +1,9 @@
 namespace MiseRecipeExtractor.Core.Entities;
 
-public class SourceMetadata
+public class SourceMetadata(string platform, string? sourceUrl, string originalLanguage = "zh")
 {
-    public string Platform { get; set; } = "Xiaohongshu";
-    public string? SourceUrl { get; set; }
-    public string OriginalLanguage { get; set; } = "zh";
-    public DateTime ExtractedAt { get; set; }
+    public string Platform { get; } = platform;
+    public string? SourceUrl { get; } = sourceUrl;
+    public string OriginalLanguage { get; } = originalLanguage;
+    public DateTime ExtractedAt { get; } = DateTime.UtcNow;
 }

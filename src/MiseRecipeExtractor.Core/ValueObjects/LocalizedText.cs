@@ -1,7 +1,7 @@
 namespace MiseRecipeExtractor.Core.ValueObjects;
 
-public class LocalizedText
+public class LocalizedText(string original, string? translated = null)
 {
-    public string Original { get; set; } = string.Empty;
-    public string? Translated { get; set; }
+    public string Original { get; } = original;
+    public string? Translated { get; set; } = translated;
 }

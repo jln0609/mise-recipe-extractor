@@ -1,11 +1,11 @@
 namespace MiseRecipeExtractor.Core.ValueObjects;
 
-public class Quantity
+public class Quantity(string originalText, double? amount = null, string? unit = null, ConfidenceLevel confidence = ConfidenceLevel.Unspecified)
 {
-    public double? Amount { get; set; }
-    public string? Unit {get; set; }
-    public string OriginalText { get; set; } = string.Empty;
-    public ConfidenceLevel Confidence { get; set; }
+    public double? Amount { get; set; } = amount;
+    public string? Unit {get; set; } = unit;
+    public string OriginalText { get; } = originalText;
+    public ConfidenceLevel Confidence { get; set; } = confidence;
 }
 
 public enum ConfidenceLevel

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MiseRecipeExtractor.AI/MiseRecipeExtractor.AI.csproj" />
+    <Project Path="src/MiseRecipeExtractor.Api/MiseRecipeExtractor.Api.csproj" />
+    <Project Path="src/MiseRecipeExtractor.Core/MiseRecipeExtractor.Core.csproj" />
+    <Project Path="src/MiseRecipeExtractor.Infrastructure/MiseRecipeExtractor.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MiseRecipeExtractor.AI.Tests/MiseRecipeExtractor.AI.Tests.csproj" />
+    <Project Path="tests/MiseRecipeExtractor.Api.IntegrationTests/MiseRecipeExtractor.Api.IntegrationTests.csproj" />
+    <Project Path="tests/MiseRecipeExtractor.Core.Tests/MiseRecipeExtractor.Core.Tests.csproj" />
+    <Project Path="tests/MiseRecipeExtractor.Infrastructure.Tests/MiseRecipeExtractor.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

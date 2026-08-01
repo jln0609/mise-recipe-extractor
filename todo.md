@@ -27,3 +27,9 @@
 ### iOS ingestion
 * once API is stable enough not to change too often
 * shortcuts -> webhook
+
+
+
+## Ideas
+
+* Option to modify the system prompt for the AI (e.g. "Suggest appropriate changes for using a stovetop pressure cooker.")

@@ -88,6 +88,13 @@ Planned approach: iOS Shortcuts app (or a Share Sheet integration) POSTs screens
 - **EF Core** (Entity Framework Core) — not yet added; SQLite is the planned provider for local/personal use
 - AI provider — not yet integrated; Anthropic's API is the current plan
 
+
+## Why ASP.NET Core
+
+The domain — structured recipes with ingredients, steps, and version history — maps naturally onto EF Core's relational modeling, and ASP.NET Core's controller/DI (Dependency Injection) conventions give each concern (HTTP boundary, orchestration, persistence, AI integration) a clean, separated home. Calling an LLM (Large Language Model) API from C# is no harder than from Python or Node.js — it's just an HTTP POST — so nothing about the AI integration specifically required a different stack.
+
+The trade-off: more ceremony around async orchestration and DI container setup than a comparable Python/Node script would need for the same functionality.
+
 ## Known open items / deliberate deferrals
 
 - `Microsoft.OpenApi` transitive package currently resolves to a version with a known (low-real-world-risk for this project) CVE (GHSA-v5pm-xwqc-g5wc), pending an upstream fix in `Microsoft.AspNetCore.OpenApi`. Deliberately not addressed yet.

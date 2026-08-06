@@ -2,17 +2,16 @@ using MiseRecipeExtractor.Core.ValueObjects;
 
 namespace MiseRecipeExtractor.Core.Entities;
 
-public class RecipeVersion(int versionNumber, LocalizedText title,
-    List<Ingredient> ingredients, List<Step> steps, RecipeStatus status = RecipeStatus.Draft)
+public class RecipeVersion
 {
-    public Guid Id { get; } = Guid.NewGuid();
-    public int VersionNumber { get; } = versionNumber;
-    public RecipeStatus Status { get; set; } = status;
-    public LocalizedText Title { get; } = title;
-    public List<Ingredient> Ingredients { get;} = ingredients;
-    public List<Step> Steps { get; } = steps;
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public int VersionNumber { get; init; }
+    public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
+    public LocalizedText Title { get; init; } = null!;
+    public List<Ingredient> Ingredients { get; init; } = new();
+    public List<Step> Steps { get; init; } = new();
     public string? Notes { get; set; }
-    public DateTime CreatedAt { get; } = DateTime.Now;
+    public DateTime CreatedAt { get; init; } = DateTime.Now;
 }
 
 public enum RecipeStatus

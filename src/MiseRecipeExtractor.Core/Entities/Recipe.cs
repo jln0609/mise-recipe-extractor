@@ -2,10 +2,10 @@ using MiseRecipeExtractor.Core.ValueObjects;
 
 namespace MiseRecipeExtractor.Core.Entities;
 
-public class Recipe(SourceMetadata source)
+public class Recipe
 {
     public Guid Id { get;} = Guid.NewGuid();
-    public SourceMetadata Source { get; } = source;
+    public SourceMetadata Source { get; init; } = null!;
     public List<RecipeVersion> Versions { get; set; } = new();
 
     public RecipeVersion CurrentVersion => Versions.OrderByDescending(v => v.CreatedAt).First();
@@ -14,7 +14,14 @@ public class Recipe(SourceMetadata source)
         RecipeStatus status = RecipeStatus.Draft)
     {
         int nextVersionNumber = Versions.Count == 0 ? 1 : Versions.Max(v => v.VersionNumber) + 1;
-        RecipeVersion version = new RecipeVersion(nextVersionNumber, title, ingredients, steps, status);
+        RecipeVersion version = new RecipeVersion
+        {
+            VersionNumber = nextVersionNumber,
+            Title = title,
+            Ingredients = ingredients,
+            Steps = steps,
+            Status = status
+        };
         Versions.Add(version);
         return version;
     }

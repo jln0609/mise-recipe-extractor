@@ -32,10 +32,13 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<RecipeResponse>> Create(CreateRecipeRequest request)
     {
-        Recipe recipe = new Recipe(new SourceMetadata(request.Platform, request.SourceUrl));
+        Recipe recipe = new Recipe
+        {
+            Source = new SourceMetadata {Platform = request.Platform, SourceUrl = request.SourceUrl },
+        };
 
         recipe.AddVersion(
-            title: new LocalizedText(request.TitleOriginal, request.TitleTranslated),
+            title: new LocalizedText { Original = request.TitleOriginal, Translated = request.TitleTranslated },
             ingredients: new List<Ingredient>(),
             steps: new List<Step>()
         );

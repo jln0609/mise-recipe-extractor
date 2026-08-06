@@ -85,7 +85,6 @@ This is a good candidate for **Semantic Kernel** (Microsoft's .NET AI orchestrat
 
 This is a deliberately different problem from the structured extraction pipeline (`IRecipeExtractor`), where the sequence of steps is always fixed and known ahead of time — for that pipeline, plain orchestration code in `Core`'s use cases is simpler and sufficient; there's no ambiguity for an AI to resolve about *when* to call something. Semantic Kernel earns its place specifically once the flow becomes open-ended and user-driven, which the extraction pipeline currently isn't.
 
-## iOS ingestion (future scope)
 
 ## iOS ingestion (future scope)
 

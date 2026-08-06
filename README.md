@@ -77,6 +77,16 @@ Value objects:
 
 No Xiaohongshu API exists, and scraping the platform was deliberately ruled out (ToS violations, legal exposure, fragile reverse-engineering). The planned approach: treat video the same as screenshots — accept whatever file the user has already extracted themselves (manual save, screen recording, or a share link), keeping the app in "processes content the user already has" territory rather than "accesses the platform directly."
 
+## Conversational recipe editing (future scope)
+
+Longer-term idea: a chat-style interface for editing recipes conversationally (e.g. "make this vegetarian," "double the recipe," "is this already in my collection?"), rather than only a structured edit form.
+
+This is a good candidate for **Semantic Kernel** (Microsoft's .NET AI orchestration framework), specifically its **plugin** model — wrapping application functions (duplicate-recipe lookup, dietary classification, unit conversion, ingredient-name glossary lookups) as tools the model can choose to call mid-conversation, in whatever order the conversation actually calls for.
+
+This is a deliberately different problem from the structured extraction pipeline (`IRecipeExtractor`), where the sequence of steps is always fixed and known ahead of time — for that pipeline, plain orchestration code in `Core`'s use cases is simpler and sufficient; there's no ambiguity for an AI to resolve about *when* to call something. Semantic Kernel earns its place specifically once the flow becomes open-ended and user-driven, which the extraction pipeline currently isn't.
+
+## iOS ingestion (future scope)
+
 ## iOS ingestion (future scope)
 
 Planned approach: iOS Shortcuts app (or a Share Sheet integration) POSTs screenshots/videos to this API. No native iOS app planned initially — starting with the lowest-friction option (Shortcuts → webhook) before considering a Share Extension.

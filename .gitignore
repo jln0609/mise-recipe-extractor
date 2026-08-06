@@ -3,3 +3,4 @@ obj/
 .idea/
 *.DotSettings.user
 .claude/
+src/MiseRecipeExtractor.Api/recipes.db

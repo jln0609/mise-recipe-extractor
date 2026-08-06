@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using MiseRecipeExtractor.Api.Fakes;
 using MiseRecipeExtractor.Core.Interfaces;
+using MiseRecipeExtractor.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,9 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// For testing:
-builder.Services.AddSingleton<IRecipeRepository, InMemoryRecipeRepository>();
-//
+builder.Services.AddDbContext<RecipeDbContext>(options =>
+    options.UseSqlite("Data Source=recipes.db"));
 
 var app = builder.Build();
 

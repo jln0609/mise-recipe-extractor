@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using MiseRecipeExtractor.Api.Fakes;
 using MiseRecipeExtractor.Core.Interfaces;
 using MiseRecipeExtractor.Infrastructure;
 

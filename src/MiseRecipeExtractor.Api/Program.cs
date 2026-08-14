@@ -10,7 +10,10 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<RecipeDbContext>(options =>
-    options.UseSqlite("Data Source=recipes.db"));
+    options.UseSqlite("Data Source=recipes.db", sqliteOptions => 
+        sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+
+builder.Services.AddScoped<IRecipeRepository, EfRecipeRepository>();
 
 var app = builder.Build();
 

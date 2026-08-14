@@ -109,6 +109,7 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `Microsoft.OpenApi` transitive package currently resolves to a version with a known (low-real-world-risk for this project) CVE (GHSA-v5pm-xwqc-g5wc), pending an upstream fix in `Microsoft.AspNetCore.OpenApi`. Deliberately not addressed yet.
 - `app.UseHttpsRedirection()` is commented out in `Program.cs` for local development convenience (avoids local dev-certificate friction). Needs to be reinstated before any real deployment.
 - DTOs currently flatten `LocalizedText` into `XOriginal`/`XTranslated` field pairs rather than nesting. Fine for the current single-field (title-only) request shape; will likely need revisiting once ingredients/steps are included in create/update requests.
+- `EfRecipeRepository.UpdateAsync` reconciles `Recipe` and top-level `RecipeVersion` fields precisely (only changed fields generate SQL updates), but does not reconcile `Ingredient`/`Step` fields within an *already-saved* version. This is deliberate: the current domain model treats a `RecipeVersion`'s ingredients/steps as an immutable snapshot — "adjusting" a recipe is expected to mean creating a new version via `Recipe.AddVersion`, not editing an existing version's ingredients in place. Revisit if in-place editing of `Draft`-status versions becomes a real feature.
 
 ## Running locally
 

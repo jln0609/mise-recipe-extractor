@@ -4,7 +4,7 @@ An application that uses AI (multimodal vision/language models) to extract recip
 
 The name comes from *mise en place* — having everything in its place before you start cooking. The app's job is to take the chaos of a screenshot (mixed Chinese/English text, vague quantities, emoji-as-structure) and put it in its place.
 
-## Status: early scaffolding — vertical slice proven, no real persistence or AI yet
+## Status: real persistence in place, AI extraction not yet started
 
 This project is also an explicit learning exercise in:
 - Clean separation of concerns (Hexagonal / Ports & Adapters architecture)
@@ -14,9 +14,11 @@ This project is also an explicit learning exercise in:
 
 ## What's working right now
 
-- Full request round trip: `POST /api/recipes` → controller → Core domain entity construction → in-memory fake repository → stored → `GET /api/recipes` → retrieved → mapped to DTO → returned as JSON
+- Full request round trip: `POST /api/recipes` → controller → Core domain entity construction → **EF Core + SQLite persistence** → `GET /api/recipes` → retrieved → mapped to DTO → returned as JSON. Verified to survive a full app process restart, confirming genuine on-disk persistence, not just in-memory state.
 - Verified correct handling of non-ASCII (Chinese) text end-to-end — this matters a lot given the primary source content is Chinese-language
 - Core domain model has a first real invariant (`Recipe.AddVersion` auto-incrementing version numbers) covered by unit tests
+- `EfRecipeRepository` implements `IRecipeRepository` against `RecipeDbContext`, using `ComplexProperty` (not `OwnsOne`) for value objects (`LocalizedText`, `Quantity`, `SourceMetadata`), eager loading via `Include`/`ThenInclude`, and split-query behavior configured to avoid cartesian-product query blow-up across sibling collections (`Ingredients`/`Steps`)
+
 
 ## Architecture
 
@@ -48,11 +50,12 @@ Core, Infrastructure, AI  ←  Api  (composition root)
 - `IRecipeRepository` — persistence
 - `IRecipeExtractor` — AI-based extraction from images
 
-Right now, `Api` uses a temporary `InMemoryRecipeRepository` (in `Api/Fakes/`) as a stand-in for `IRecipeRepository`, registered as a DI (Dependency Injection) singleton, purely to prove the wiring works before real persistence exists. This fake will be deleted once the real EF Core-backed repository is built in `Infrastructure`.
+`Infrastructure` implements `IRecipeRepository` via `EfRecipeRepository`, backed by `RecipeDbContext` (EF Core + SQLite), registered as `Scoped` in DI (Dependency Injection). An earlier `InMemoryRecipeRepository` fake was used to prove the API → Core wiring before real persistence existed, and has since been removed.
+
 
 ## Domain model
 
-Core entities, using C# primary constructors and immutable-by-default properties (no setters unless the field is genuinely meant to be editable, e.g. during recipe testing/adjustment):
+Core entities, using `init`-only properties and immutable-by-default construction (no setters unless the field is genuinely meant to be editable, e.g. during recipe testing/adjustment):
 
 - **`Recipe`** — aggregate root. Holds `SourceMetadata` and a history of `RecipeVersion`s. `AddVersion(...)` is the only way to add a version; it owns version-number incrementing.
 - **`RecipeVersion`** — a full snapshot: title, ingredients, steps, status (`Draft` / `Tested` / `Adjusted`), free-text notes. Snapshots (not diffs/patches) were chosen deliberately for simplicity at this data scale — diffing between versions can be computed on read rather than stored.
@@ -94,7 +97,8 @@ Planned approach: iOS Shortcuts app (or a Share Sheet integration) POSTs screens
 
 - **.NET 10** / **ASP.NET Core Web API** (controller-based, not minimal APIs — chosen partly to build a solid understanding of the controller model)
 - **xUnit** for testing
-- **EF Core** (Entity Framework Core) — not yet added; SQLite is the planned provider for local/personal use
+- **EF Core** (Entity Framework Core) with **SQLite** — in place; entities use `init`-only properties (not primary constructors — see "Known open items" below) and `ComplexProperty` for value objects
+
 - AI provider — not yet integrated; Anthropic's API is the current plan
 
 
@@ -109,6 +113,7 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `Microsoft.OpenApi` transitive package currently resolves to a version with a known (low-real-world-risk for this project) CVE (GHSA-v5pm-xwqc-g5wc), pending an upstream fix in `Microsoft.AspNetCore.OpenApi`. Deliberately not addressed yet.
 - `app.UseHttpsRedirection()` is commented out in `Program.cs` for local development convenience (avoids local dev-certificate friction). Needs to be reinstated before any real deployment.
 - DTOs currently flatten `LocalizedText` into `XOriginal`/`XTranslated` field pairs rather than nesting. Fine for the current single-field (title-only) request shape; will likely need revisiting once ingredients/steps are included in create/update requests.
+- Core entities originally used C# primary constructors (immutable, constructor-enforced). This was reverted to `init`-only properties with no custom constructors, after hitting a confirmed open EF Core bug: complex types (`LocalizedText`, `Quantity`) cannot be constructor-bound when nested inside another type's primary constructor. `init` properties preserve immutability-after-construction without triggering this limitation.
 - `EfRecipeRepository.UpdateAsync` reconciles `Recipe` and top-level `RecipeVersion` fields precisely (only changed fields generate SQL updates), but does not reconcile `Ingredient`/`Step` fields within an *already-saved* version. This is deliberate: the current domain model treats a `RecipeVersion`'s ingredients/steps as an immutable snapshot — "adjusting" a recipe is expected to mean creating a new version via `Recipe.AddVersion`, not editing an existing version's ingredients in place. Revisit if in-place editing of `Draft`-status versions becomes a real feature.
 
 ## Running locally
@@ -143,8 +148,6 @@ dotnet test
 
 ## Next steps
 
-1. Real `Infrastructure` implementation of `IRecipeRepository` using EF Core + SQLite; first migration
-2. Delete `InMemoryRecipeRepository` once the real one is in place
-3. `AI` implementation of `IRecipeExtractor` — prompt design, image input, structured JSON output, response parsing/validation
-4. Wire AI + real persistence together in `Api`; add integration tests
-5. iOS ingestion via Shortcuts
++1. `AI` implementation of `IRecipeExtractor` — prompt design, image input, structured JSON output, response parsing/validation
++2. Wire AI + real persistence together in `Api`; add integration tests
++3. iOS ingestion via Shortcuts

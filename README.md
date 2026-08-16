@@ -76,6 +76,15 @@ Value objects:
 - **Emoji-as-structure** — emoji in captions often function as semantic bullets/section markers (🔥 heat, ⏰ timing), not decoration; the extraction prompt needs to account for this.
 - **Confidence/ambiguity surfacing** — `Quantity.ConfidenceLevel` and `Step.OrderIsInferred` are the first-class ways ambiguity is represented, rather than silently resolved.
 
+## AI extraction: two parallel adapters (planned)
+
+`IRecipeExtractor` will get two separate implementations in `AI`, both satisfying the same interface:
+
+- **`AnthropicRecipeExtractor`** — direct call to the Anthropic Messages API (C#, `HttpClient`), using tool-use for schema-constrained structured output. Billed per-token via standard API credits.
+- **`AgentSdkRecipeExtractor`** — uses Anthropic's Agent SDK (officially Python/TypeScript only) to draw on the separate monthly Agent SDK credit bundled with a Pro/Max subscription, rather than pay-per-token billing. Since the Agent SDK has no official .NET package, this adapter wraps a small TypeScript process, called from its C# implementation of `IRecipeExtractor`.
+
+
+
 ## Video ingestion (future scope)
 
 No Xiaohongshu API exists, and scraping the platform was deliberately ruled out (ToS violations, legal exposure, fragile reverse-engineering). The planned approach: treat video the same as screenshots — accept whatever file the user has already extracted themselves (manual save, screen recording, or a share link), keeping the app in "processes content the user already has" territory rather than "accesses the platform directly."
@@ -104,7 +113,8 @@ Planned approach: iOS Shortcuts app (or a Share Sheet integration) POSTs screens
 
 ## Why ASP.NET Core
 
-The domain — structured recipes with ingredients, steps, and version history — maps naturally onto EF Core's relational modeling, and ASP.NET Core's controller/DI (Dependency Injection) conventions give each concern (HTTP boundary, orchestration, persistence, AI integration) a clean, separated home. Calling an LLM (Large Language Model) API from C# is no harder than from Python or Node.js — it's just an HTTP POST — so nothing about the AI integration specifically required a different stack.
+The domain — structured recipes with ingredients, steps, and version history — maps naturally onto EF Core's relational modeling, and ASP.NET Core's controller/DI (Dependency Injection) conventions give each concern (HTTP boundary, orchestration, persistence, AI integration) a clean, separated home. A direct HTTP call to an LLM (Large Language Model) API is no harder in C# than in Python or Node.js. The one place the stack does expand beyond C# is the planned `AgentSdkRecipeExtractor` (see "AI extraction" below) — Anthropic's Agent SDK, needed to draw on subscription credit rather than pay-per-token billing, is officially Python/TypeScript only. That's a real, product-driven constraint, not a limitation of C#/ASP.NET Core itself, and the Hexagonal architecture contains its impact to a single adapter.
+
 
 The trade-off: more ceremony around async orchestration and DI container setup than a comparable Python/Node script would need for the same functionality.
 

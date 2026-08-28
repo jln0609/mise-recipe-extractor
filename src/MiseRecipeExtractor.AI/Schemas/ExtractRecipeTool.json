@@ -1,0 +1,77 @@
+{
+  "name": "extract_recipe",
+  "description": "Extract a structured recipe from the provided images.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "detectedSourceLanguage": {
+        "type": "string",
+        "description": "The primary language of the source content, as an ISO 639-1 code (e.g. 'zh', 'en', 'ko')."
+      },
+      "title": {
+        "type": "object",
+        "properties": {
+          "original": { "type": "string" },
+          "translated": { "type": ["string", "null"] }
+        },
+        "required": ["original"]
+      },
+      "ingredients": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "object",
+              "properties": {
+                "original": { "type": "string" },
+                "translated": { "type": ["string", "null"] }
+              },
+              "required": ["original"]
+            },
+            "quantity": {
+              "type": "object",
+              "properties": {
+                "originalText": { "type": "string" },
+                "amount": { "type": ["number", "null"] },
+                "unit": { "type": ["string", "null"] },
+                "confidence": {
+                  "type": "string",
+                  "enum": ["Explicit", "Estimated", "Unspecified"]
+                }
+              },
+              "required": ["originalText", "confidence"]
+            },
+            "notes": { "type": ["string", "null"] }
+          },
+          "required": ["name", "quantity"]
+        }
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "order": { "type": "integer" },
+            "text": {
+              "type": "object",
+              "properties": {
+                "original": { "type": "string" },
+                "translated": { "type": ["string", "null"] }
+              },
+              "required": ["original"]
+            },
+            "durationSeconds": { "type": ["integer", "null"] },
+            "orderIsInferred": { "type": "boolean" }
+          },
+          "required": ["order", "text", "orderIsInferred"]
+        }
+      },
+      "warnings": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["detectedSourceLanguage", "title", "ingredients", "steps", "warnings"]
+  }
+}

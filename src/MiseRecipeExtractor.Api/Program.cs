@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MiseRecipeExtractor.AI;
 using MiseRecipeExtractor.Core.Interfaces;
 using MiseRecipeExtractor.Infrastructure;
 
@@ -13,6 +14,17 @@ builder.Services.AddDbContext<RecipeDbContext>(options =>
         sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 builder.Services.AddScoped<IRecipeRepository, EfRecipeRepository>();
+
+var anthropicApiKey = builder.Configuration["Anthropic:ApiKey"]
+    ?? throw new InvalidOperationException(
+        "Anthropic:ApiKey is not configured. Run: dotnet user-secrets set \"Anthropic:ApiKey\" \"your-key\"");
+
+builder.Services.AddHttpClient<IRecipeExtractor, AnthropicRecipeExtractor>(client =>
+    {
+        client.BaseAddress = new Uri("https://api.anthropic.com/");
+        client.DefaultRequestHeaders.Add("x-api-key", "anthropicApiKey");
+        client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+    });
 
 var app = builder.Build();
 

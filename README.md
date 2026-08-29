@@ -4,13 +4,8 @@ An application that uses AI (multimodal vision/language models) to extract recip
 
 The name comes from *mise en place* — having everything in its place before you start cooking. The app's job is to take the chaos of a screenshot (mixed Chinese/English text, vague quantities, emoji-as-structure) and put it in its place.
 
-## Status: real persistence in place, AI extraction not yet started
+## Status: real persistence in place, AI extraction working end-to-end and validated against real data
 
-This project is also an explicit learning exercise in:
-- Clean separation of concerns (Hexagonal / Ports & Adapters architecture)
-- ASP.NET Core Web API with controllers
-- Entity Framework Core (coming next)
-- AI-assisted structured data extraction from multimodal input
 
 ## What's working right now
 
@@ -18,7 +13,7 @@ This project is also an explicit learning exercise in:
 - Verified correct handling of non-ASCII (Chinese) text end-to-end — this matters a lot given the primary source content is Chinese-language
 - Core domain model has a first real invariant (`Recipe.AddVersion` auto-incrementing version numbers) covered by unit tests
 - `EfRecipeRepository` implements `IRecipeRepository` against `RecipeDbContext`, using `ComplexProperty` (not `OwnsOne`) for value objects (`LocalizedText`, `Quantity`, `SourceMetadata`), eager loading via `Include`/`ThenInclude`, and split-query behavior configured to avoid cartesian-product query blow-up across sibling collections (`Ingredients`/`Steps`)
-
+- `AnthropicRecipeExtractor` implements `IRecipeExtractor` via a direct call to the Anthropic Messages API, using tool-use (schema-constrained structured output) rather than prose-parsed JSON. Tested end-to-end against a real, moderately complex 4-image Xiaohongshu recipe post (mixed Chinese text, ingredient substitution notes, storage instructions) via a standalone sandbox console app (`tools/MiseRecipeExtractor.Sandbox`). Results: correct language detection, sensible translations, correct `ConfidenceLevel` assignment (explicit gram amounts vs. a genuinely vague "适量"/"appropriate amount" ingredient), successful multi-image merging into one coherent recipe, and useful, substantive entries in `Warnings` (a cross-referenced cut-off text recovered from a second image; a text/photo discrepancy noted; a recipe-yield-vs-photo discrepancy noted). Sample output and cost data: [`docs/sample-extraction-260829.md`](docs/sample-extraction-260829.md).
 
 ## Architecture
 
@@ -26,16 +21,16 @@ This project follows a **Hexagonal (Ports & Adapters) architecture**, not a trad
 
 ```
 src/
-├── MiseRecipeExtractor.Core/            — domain entities, value objects, interfaces (ports). No external dependencies.
-├── MiseRecipeExtractor.Infrastructure/  — persistence adapter (EF Core, coming next). Depends on Core.
-├── MiseRecipeExtractor.AI/              — AI extraction adapter (Anthropic API, coming next). Depends on Core.
-└── MiseRecipeExtractor.Api/             — ASP.NET Core Web API. Composition root + driving adapter. Depends on Core, Infrastructure, AI.
+- MiseRecipeExtractor.Core/            — domain entities, value objects, interfaces (ports). No external dependencies.
+- MiseRecipeExtractor.Infrastructure/  — persistence adapter (EF Core, coming next). Depends on Core.
+- MiseRecipeExtractor.AI/              — AI extraction adapter (Anthropic API). Depends on Core.
+- MiseRecipeExtractor.Api/             — ASP.NET Core Web API. Composition root + driving adapter. Depends on Core, Infrastructure, AI.
 
 tests/
-├── MiseRecipeExtractor.Core.Tests/
-├── MiseRecipeExtractor.Infrastructure.Tests/
-├── MiseRecipeExtractor.AI.Tests/
-└── MiseRecipeExtractor.Api.IntegrationTests/
+- MiseRecipeExtractor.Core.Tests/
+- MiseRecipeExtractor.Infrastructure.Tests/
+- MiseRecipeExtractor.AI.Tests/
+- MiseRecipeExtractor.Api.IntegrationTests/
 ```
 
 ### Dependency rule
@@ -71,8 +66,8 @@ Value objects:
 ## Known domain hurdles this is designed around
 
 - **Vague Chinese quantities** — handled via `Quantity.ConfidenceLevel`, see above.
-- **Multi-slide/carousel screenshots** — a single extraction call will take multiple images and merge them into one `RecipeVersion` (not yet implemented).
-- **Mixed original + app-translated text in the same screenshot** — the extraction prompt (not yet built) needs to distinguish genuine source text from Xiaohongshu's own baked-in machine translation.
+- **Multi-slide/carousel screenshots** — a single extraction call takes multiple images and merges them into one `RecipeVersion`. Validated against a real 4-image post.
+- **Mixed original + app-translated text in the same screenshot** — the extraction prompt explicitly instructs the model to distinguish genuine source text from a platform's own baked-in machine translation and produce its own translation rather than copying it. Not yet stress-tested against a screenshot that actually contains this specific case.
 - **Emoji-as-structure** — emoji in captions often function as semantic bullets/section markers (🔥 heat, ⏰ timing), not decoration; the extraction prompt needs to account for this.
 - **Confidence/ambiguity surfacing** — `Quantity.ConfidenceLevel` and `Step.OrderIsInferred` are the first-class ways ambiguity is represented, rather than silently resolved.
 
@@ -80,9 +75,10 @@ Value objects:
 
 `IRecipeExtractor` will get two separate implementations in `AI`, both satisfying the same interface:
 
-- **`AnthropicRecipeExtractor`** — direct call to the Anthropic Messages API (C#, `HttpClient`), using tool-use for schema-constrained structured output. Billed per-token via standard API credits.
+- **`AnthropicRecipeExtractor`** — direct call to the Anthropic Messages API (C#, `HttpClient`), using tool-use for schema-constrained structured output. Billed per-token via standard API credits. **Implemented and validated against real data** (see "What's working right now" above).
 - **`AgentSdkRecipeExtractor`** — uses Anthropic's Agent SDK (officially Python/TypeScript only) to draw on the separate monthly Agent SDK credit bundled with a Pro/Max subscription, rather than pay-per-token billing. Since the Agent SDK has no official .NET package, this adapter wraps a small TypeScript process, called from its C# implementation of `IRecipeExtractor`.
 
+The direct API version was built and validated first (simpler, keeps prompt/schema/parsing work in one language while that gets nailed down); the Agent SDK version follows.
 
 
 ## Video ingestion (future scope)
@@ -127,6 +123,8 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `EfRecipeRepository.UpdateAsync` reconciles `Recipe` and top-level `RecipeVersion` fields precisely (only changed fields generate SQL updates), but does not reconcile `Ingredient`/`Step` fields within an *already-saved* version. This is deliberate: the current domain model treats a `RecipeVersion`'s ingredients/steps as an immutable snapshot — "adjusting" a recipe is expected to mean creating a new version via `Recipe.AddVersion`, not editing an existing version's ingredients in place. Revisit if in-place editing of `Draft`-status versions becomes a real feature.
 - `AnthropicRecipeExtractor.MapToExtractionResult` sets `RecipeVersion.VersionNumber` to a placeholder value of `1`, since `IRecipeExtractor` is stateless and has no knowledge of whether an extraction is for a new `Recipe` or a re-extraction being added to an existing one's version history. Callers must treat this as provisional and always go through `Recipe.AddVersion` (which handles correct auto-incrementing) rather than relying on the returned value directly. Only `AnthropicRecipeExtractor` exists so far — this note will need revisiting once the Core use-case layer (`ExtractAndCreateRecipeCommand` / `ExtractAndAddVersionCommand`, not yet built) is implemented, since it's the natural place to resolve this properly.
 - `AnthropicRecipeExtractor` currently only supports PNG and JPEG images (detected via byte signature, not file extension). HEIC (the default format for photos taken directly on iOS) is not yet handled. Not currently a problem since iOS screenshots specifically are PNG by convention regardless of the photo-format setting, but worth revisiting if actual camera photos (not screenshots) are ever fed in directly.
+- `Quantity` has no `Translated` field — only `OriginalText` plus optional numeric `Amount`/`Unit`. For purely numeric quantities this is fine (`50g` needs no translation), but word-based quantity descriptions (e.g. "一张"/"one sheet") currently have no English rendering anywhere in the data. Deliberately deferred; will need a schema/prompt/domain-model/migration change together when addressed.
+
 ## Running locally
 
 ```powershell
@@ -157,8 +155,18 @@ Invoke-RestMethod -Uri "http://localhost:5249/api/recipes"
 dotnet test
 ```
 
+## Testing the AI extractor manually
+
+`tools/MiseRecipeExtractor.Sandbox` is a small standalone console app for running `AnthropicRecipeExtractor` against real images without going through the full API — useful for iterating on the prompt/schema. Requires `Anthropic:ApiKey` in User Secrets (see "Running locally") and a local folder of test screenshots (not committed — real recipe content, gitignored).
+
+```powershell
+cd tools/MiseRecipeExtractor.Sandbox
+dotnet run
+```
+
 ## Next steps
 
-+1. `AI` implementation of `IRecipeExtractor` — prompt design, image input, structured JSON output, response parsing/validation
-+2. Wire AI + real persistence together in `Api`; add integration tests
-+3. iOS ingestion via Shortcuts
+1. Wire `AnthropicRecipeExtractor` into the real API — Core use-case layer (`ExtractAndCreateRecipeCommand`), an API endpoint to trigger it, add integration tests
+2. Broader prompt testing
+3. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)
+4. iOS ingestion via Shortcuts

@@ -3,6 +3,7 @@ obj/
 .idea/
 *.DotSettings.user
 .claude/
+test screenshots/
 # SQLite local database files
 *.db
 *.db-shm

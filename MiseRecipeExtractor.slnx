@@ -11,4 +11,7 @@
     <Project Path="tests/MiseRecipeExtractor.Core.Tests/MiseRecipeExtractor.Core.Tests.csproj" />
     <Project Path="tests/MiseRecipeExtractor.Infrastructure.Tests/MiseRecipeExtractor.Infrastructure.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/MiseRecipeExtractor.Sandbox/MiseRecipeExtractor.Sandbox.csproj" />
+  </Folder>
 </Solution>

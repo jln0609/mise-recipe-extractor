@@ -28,7 +28,12 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
         JsonObject requestBody = BuildRequestBody(images);
 
         var response = await _httpClient.PostAsJsonAsync(("v1/messages"), requestBody);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"Anthropic API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}.)");
+        }
 
         var responseJson = await response.Content.ReadFromJsonAsync<JsonObject>()
                            ?? throw new InvalidOperationException(
@@ -87,7 +92,7 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
                 }
             },
             ["tools"] = new JsonArray(toolSchema),
-            ["tool_choices"] = new JsonObject
+            ["tool_choice"] = new JsonObject
             {
                 ["type"] = "tool",
                 ["name"] = "extract_recipe"

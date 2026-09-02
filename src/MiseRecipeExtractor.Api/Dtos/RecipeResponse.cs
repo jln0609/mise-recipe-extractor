@@ -1,12 +1,4 @@
-namespace MiseRecipeExtractor.Api.Dtos;
-
-public class CreateRecipeRequest
-{
-    public string Platform { get; set; } = "Xiaohongshu";
-    public string? SourceUrl { get; set; }
-    public string TitleOriginal { get; set; } = "";
-    public string? TitleTranslated { get; set; }
-}
+﻿namespace MiseRecipeExtractor.Api.Dtos;
 
 public class RecipeResponse
 {

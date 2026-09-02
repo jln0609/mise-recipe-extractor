@@ -14,7 +14,7 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
     public async Task<ActionResult<List<RecipeResponse>>> GetAll()
     {
         List<Recipe> recipes = await repository.GetAllAsync();
-        List<RecipeResponse> responses = recipes.Select(ToResponse).ToList();
+        List<RecipeResponse> responses = recipes.Select(RecipeResponseMapper.ToResponse).ToList();
         return Ok(responses);
     }
 
@@ -26,7 +26,7 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
         {
             return NotFound();
         }
-        return Ok(ToResponse(recipe));
+        return Ok(RecipeResponseMapper.ToResponse(recipe));
     }
 
     [HttpPost]
@@ -45,21 +45,6 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
         
         await repository.AddAsync(recipe);
         
-        return CreatedAtAction(nameof(GetById), new { id = recipe.Id }, ToResponse(recipe));
-    }
-    
-    private static RecipeResponse ToResponse(Recipe recipe)
-    {
-        RecipeVersion current = recipe.CurrentVersion;
-        return new RecipeResponse
-        {
-            Id = recipe.Id,
-            Platform = recipe.Source.Platform,
-            SourceUrl = recipe.Source.SourceUrl,
-            CurrentVersionNumber = current.VersionNumber,
-            TitleOriginal = current.Title.Original,
-            TitleTranslated = current.Title.Translated,
-            Status = current.Status.ToString()
-        };
+        return CreatedAtAction(nameof(GetById), new { id = recipe.Id }, RecipeResponseMapper.ToResponse(recipe));
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MiseRecipeExtractor.AI;
 using MiseRecipeExtractor.Core.Interfaces;
+using MiseRecipeExtractor.Core.UseCases;
 using MiseRecipeExtractor.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,9 +23,11 @@ var anthropicApiKey = builder.Configuration["Anthropic:ApiKey"]
 builder.Services.AddHttpClient<IRecipeExtractor, AnthropicRecipeExtractor>(client =>
     {
         client.BaseAddress = new Uri("https://api.anthropic.com/");
-        client.DefaultRequestHeaders.Add("x-api-key", "anthropicApiKey");
+        client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
         client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
     });
+
+builder.Services.AddScoped<ExtractAndCreateRecipeCommand>();
 
 var app = builder.Build();
 

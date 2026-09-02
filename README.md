@@ -4,7 +4,8 @@ An application that uses AI (multimodal vision/language models) to extract recip
 
 The name comes from *mise en place* — having everything in its place before you start cooking. The app's job is to take the chaos of a screenshot (mixed Chinese/English text, vague quantities, emoji-as-structure) and put it in its place.
 
-## Status: real persistence in place, AI extraction working end-to-end and validated against real data
+
+## Status: full pipeline working end-to-end — screenshot upload → AI extraction → persistence → retrieval, via the real HTTP API
 
 
 ## What's working right now
@@ -14,6 +15,8 @@ The name comes from *mise en place* — having everything in its place before yo
 - Core domain model has a first real invariant (`Recipe.AddVersion` auto-incrementing version numbers) covered by unit tests
 - `EfRecipeRepository` implements `IRecipeRepository` against `RecipeDbContext`, using `ComplexProperty` (not `OwnsOne`) for value objects (`LocalizedText`, `Quantity`, `SourceMetadata`), eager loading via `Include`/`ThenInclude`, and split-query behavior configured to avoid cartesian-product query blow-up across sibling collections (`Ingredients`/`Steps`)
 - `AnthropicRecipeExtractor` implements `IRecipeExtractor` via a direct call to the Anthropic Messages API, using tool-use (schema-constrained structured output) rather than prose-parsed JSON. Tested end-to-end against a real, moderately complex 4-image Xiaohongshu recipe post (mixed Chinese text, ingredient substitution notes, storage instructions) via a standalone sandbox console app (`tools/MiseRecipeExtractor.Sandbox`). Results: correct language detection, sensible translations, correct `ConfidenceLevel` assignment (explicit gram amounts vs. a genuinely vague "适量"/"appropriate amount" ingredient), successful multi-image merging into one coherent recipe, and useful, substantive entries in `Warnings` (a cross-referenced cut-off text recovered from a second image; a text/photo discrepancy noted; a recipe-yield-vs-photo discrepancy noted). Sample output and cost data: [`docs/sample-extraction-260829.md`](docs/sample-extraction-260829.md).
+- **`POST /api/extractions` implemented and verified end-to-end**: multipart image upload → `ExtractionsController` → `ExtractAndCreateRecipeCommand` (Core use case) → `AnthropicRecipeExtractor` → `Recipe`/`RecipeVersion` construction (correct `VersionNumber` via `Recipe.AddVersion`, `DetectedSourceLanguage` → `SourceMetadata.OriginalLanguage`) → `EfRecipeRepository` persistence → returned as `RecipeResponse`. Confirmed the persisted recipe round-trips correctly through the separate `GET /api/recipes` endpoint too. Tested from a clean clone on a different machine than where it was built.
+
 
 ## Architecture
 
@@ -46,6 +49,10 @@ Core, Infrastructure, AI  ←  Api  (composition root)
 - `IRecipeExtractor` — AI-based extraction from images
 
 `Infrastructure` implements `IRecipeRepository` via `EfRecipeRepository`, backed by `RecipeDbContext` (EF Core + SQLite), registered as `Scoped` in DI (Dependency Injection). An earlier `InMemoryRecipeRepository` fake was used to prove the API → Core wiring before real persistence existed, and has since been removed.
+
+`Core` also has its first **use case** (application service): `ExtractAndCreateRecipeCommand`, in `Core/UseCases/`. It orchestrates `IRecipeExtractor` + `IRecipeRepository` together — calls the extractor, builds a new `Recipe`/`SourceMetadata` from the result (including mapping `ExtractionResult.DetectedSourceLanguage`), adds the extracted content as version 1 via `Recipe.AddVersion` (which resolves the `VersionNumber` placeholder noted below), and persists it. This is the layer that was always meant to own "what does an extraction result actually become" — deliberately kept out of both `IRecipeExtractor` (stateless, no knowledge of new-vs-existing recipes) and the controller (thin HTTP boundary only).
+
+**Two separate controllers**, deliberately: `RecipesController` (`GET/POST /api/recipes`, `GET /api/recipes/{id}`) depends only on `IRecipeRepository` — plain CRUD over the recipe resource. `ExtractionsController` (`POST /api/extractions`) depends only on `ExtractAndCreateRecipeCommand` — a distinct operation with a different request shape (multipart file upload vs. JSON), different dependency weight (an external AI call, with its own latency/cost/failure modes, vs. plain local persistence), and a genuinely different realistic caller (e.g. the planned iOS Shortcut would call only `/api/extractions`, never touching `/api/recipes` directly). The two controllers share `RecipeResponse` and a `RecipeResponseMapper.ToResponse` static helper (both in `Api/Dtos/`) rather than duplicating the mapping — the only remaining coupling is `ExtractionsController` referencing `RecipesController`'s `GetById` action by name in `CreatedAtAction`, for a correct `Location` header.
 
 
 ## Domain model
@@ -122,8 +129,12 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - Core entities originally used C# primary constructors (immutable, constructor-enforced). This was reverted to `init`-only properties with no custom constructors, after hitting a confirmed open EF Core bug: complex types (`LocalizedText`, `Quantity`) cannot be constructor-bound when nested inside another type's primary constructor. `init` properties preserve immutability-after-construction without triggering this limitation.
 - `EfRecipeRepository.UpdateAsync` reconciles `Recipe` and top-level `RecipeVersion` fields precisely (only changed fields generate SQL updates), but does not reconcile `Ingredient`/`Step` fields within an *already-saved* version. This is deliberate: the current domain model treats a `RecipeVersion`'s ingredients/steps as an immutable snapshot — "adjusting" a recipe is expected to mean creating a new version via `Recipe.AddVersion`, not editing an existing version's ingredients in place. Revisit if in-place editing of `Draft`-status versions becomes a real feature.
 - `AnthropicRecipeExtractor.MapToExtractionResult` sets `RecipeVersion.VersionNumber` to a placeholder value of `1`, since `IRecipeExtractor` is stateless and has no knowledge of whether an extraction is for a new `Recipe` or a re-extraction being added to an existing one's version history. Callers must treat this as provisional and always go through `Recipe.AddVersion` (which handles correct auto-incrementing) rather than relying on the returned value directly. Only `AnthropicRecipeExtractor` exists so far — this note will need revisiting once the Core use-case layer (`ExtractAndCreateRecipeCommand` / `ExtractAndAddVersionCommand`, not yet built) is implemented, since it's the natural place to resolve this properly.
+  - Resolved for the new-recipe path: `ExtractAndCreateRecipeCommand` now exists and correctly goes through `Recipe.AddVersion` rather than trusting the placeholder. Still open for re-extraction into an *existing* recipe's history — `ExtractAndAddVersionCommand` isn't built yet.
+
 - `AnthropicRecipeExtractor` currently only supports PNG and JPEG images (detected via byte signature, not file extension). HEIC (the default format for photos taken directly on iOS) is not yet handled. Not currently a problem since iOS screenshots specifically are PNG by convention regardless of the photo-format setting, but worth revisiting if actual camera photos (not screenshots) are ever fed in directly.
 - `Quantity` has no `Translated` field — only `OriginalText` plus optional numeric `Amount`/`Unit`. For purely numeric quantities this is fine (`50g` needs no translation), but word-based quantity descriptions (e.g. "一张"/"one sheet") currently have no English rendering anywhere in the data. Deliberately deferred; will need a schema/prompt/domain-model/migration change together when addressed.
+- `CreateRecipeRequest.Platform` previously defaulted to `"Xiaohongshu"` — a leftover from before the project's scope generalized away from a single-platform assumption. Fixed to default to `string.Empty`, consistent with `CreateExtractionRequest`. No request validation (e.g. rejecting an empty platform) added yet.
+  d
 
 ## Running locally
 
@@ -166,7 +177,8 @@ dotnet run
 
 ## Next steps
 
-1. Wire `AnthropicRecipeExtractor` into the real API — Core use-case layer (`ExtractAndCreateRecipeCommand`), an API endpoint to trigger it, add integration tests
-2. Broader prompt testing
-3. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)
-4. iOS ingestion via Shortcuts
+1. `Api.IntegrationTests` for the extraction endpoint (currently only manually verified)
+2. `ExtractAndAddVersionCommand` — re-extraction into an existing recipe's version history
+3. Broader prompt testing (other languages, messier source posts)
+4. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)
+5. iOS ingestion via Shortcuts

@@ -6,9 +6,9 @@ public class Recipe
 {
     public Guid Id { get;} = Guid.NewGuid();
     public SourceMetadata Source { get; init; } = null!;
-    public List<RecipeVersion> Versions { get; set; } = new();
+    public List<RecipeVersion> Versions { get; init; } = new();
 
-    public RecipeVersion CurrentVersion => Versions.OrderByDescending(v => v.CreatedAt).First();
+    public RecipeVersion CurrentVersion => Versions.MaxBy(v => v.VersionNumber)!;
 
     public RecipeVersion AddVersion(LocalizedText title, List<Ingredient> ingredients, List<Step> steps,
         RecipeStatus status = RecipeStatus.Draft)

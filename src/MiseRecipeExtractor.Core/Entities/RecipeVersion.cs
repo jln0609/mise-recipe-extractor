@@ -11,7 +11,7 @@ public class RecipeVersion
     public List<Ingredient> Ingredients { get; init; } = new();
     public List<Step> Steps { get; init; } = new();
     public string? Notes { get; set; }
-    public DateTime CreatedAt { get; init; } = DateTime.Now;
+    public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 }
 
 public enum RecipeStatus

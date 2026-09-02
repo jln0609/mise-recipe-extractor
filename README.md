@@ -84,8 +84,10 @@ Value objects:
 
 - **`AnthropicRecipeExtractor`** — direct call to the Anthropic Messages API (C#, `HttpClient`), using tool-use for schema-constrained structured output. Billed per-token via standard API credits. **Implemented and validated against real data** (see "What's working right now" above).
 - **`AgentSdkRecipeExtractor`** — uses Anthropic's Agent SDK (officially Python/TypeScript only) to draw on the separate monthly Agent SDK credit bundled with a Pro/Max subscription, rather than pay-per-token billing. Since the Agent SDK has no official .NET package, this adapter wraps a small TypeScript process, called from its C# implementation of `IRecipeExtractor`.
+- opencode.ai investigated as a potential third `IRecipeExtractor` adapter (multi-model gateway) — see [`docs/opencode-260902.md`](docs/opencode-investigation-260902.md). Tool-use confirmed working via `deepseek-v4-flash`; Claude models currently broken on this gateway (external issue, not ours). Not yet built.
 
 The direct API version was built and validated first (simpler, keeps prompt/schema/parsing work in one language while that gets nailed down); the Agent SDK version follows.
+
 
 
 ## Video ingestion (future scope)

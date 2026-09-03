@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.VisualBasic.CompilerServices;
 using MiseRecipeExtractor.Core.Entities;
 using MiseRecipeExtractor.Core.Interfaces;
 using MiseRecipeExtractor.Core.ValueObjects;
@@ -32,7 +31,7 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
         {
             var errorBody = await response.Content.ReadAsStringAsync();
             throw new HttpRequestException(
-                $"Anthropic API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}.)");
+                $"Anthropic API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}");
         }
 
         var responseJson = await response.Content.ReadFromJsonAsync<JsonObject>()
@@ -153,7 +152,7 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
     {
         JsonArray contentArray = responseJson["content"]?.AsArray()
                                  ?? throw new InvalidOperationException(
-                                     "Anthropic Repone did not contain a 'content' array.");
+                                     "Anthropic Response did not contain a 'content' array.");
 
         JsonObject toolUseBlock = contentArray.FirstOrDefault(block => block?["type"]?.GetValue<string>() == "tool_use")
                                       as JsonObject

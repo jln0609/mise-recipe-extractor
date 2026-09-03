@@ -16,7 +16,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `EfRecipeRepository` implements `IRecipeRepository` against `RecipeDbContext`, using `ComplexProperty` (not `OwnsOne`) for value objects (`LocalizedText`, `Quantity`, `SourceMetadata`), eager loading via `Include`/`ThenInclude`, and split-query behavior configured to avoid cartesian-product query blow-up across sibling collections (`Ingredients`/`Steps`)
 - `AnthropicRecipeExtractor` implements `IRecipeExtractor` via a direct call to the Anthropic Messages API, using tool-use (schema-constrained structured output) rather than prose-parsed JSON. Tested end-to-end against a real, moderately complex 4-image Xiaohongshu recipe post (mixed Chinese text, ingredient substitution notes, storage instructions) via a standalone sandbox console app (`tools/MiseRecipeExtractor.Sandbox`). Results: correct language detection, sensible translations, correct `ConfidenceLevel` assignment (explicit gram amounts vs. a genuinely vague "适量"/"appropriate amount" ingredient), successful multi-image merging into one coherent recipe, and useful, substantive entries in `Warnings` (a cross-referenced cut-off text recovered from a second image; a text/photo discrepancy noted; a recipe-yield-vs-photo discrepancy noted). Sample output and cost data: [`docs/sample-extraction-260829.md`](docs/sample-extraction-260829.md).
 - **`POST /api/extractions` implemented and verified end-to-end**: multipart image upload → `ExtractionsController` → `ExtractAndCreateRecipeCommand` (Core use case) → `AnthropicRecipeExtractor` → `Recipe`/`RecipeVersion` construction (correct `VersionNumber` via `Recipe.AddVersion`, `DetectedSourceLanguage` → `SourceMetadata.OriginalLanguage`) → `EfRecipeRepository` persistence → returned as `RecipeResponse`. Confirmed the persisted recipe round-trips correctly through the separate `GET /api/recipes` endpoint too. Tested from a clean clone on a different machine than where it was built.
-
+- **`Api.IntegrationTests` created**, using `WebApplicationFactory<Program>` against a `CustomWebApplicationFactory` that swaps in an in-memory SQLite database and a `FakeRecipeExtractor` (avoiding real, billed Anthropic API calls in the test suite). `ExtractionsControllerTests` covers the `POST /api/extractions` write path end-to-end through real `EfRecipeRepository`/EF Core persistence (split-query behavior included). `RecipesControllerTests` separately covers the `POST /api/recipes` → `GET /api/recipes/{id}` round trip, seeded independently of the extraction pipeline to keep the two controllers' tests isolated.
 
 ## Architecture
 
@@ -179,8 +179,8 @@ dotnet run
 
 ## Next steps
 
-1. `Api.IntegrationTests` for the extraction endpoint (currently only manually verified)
-2. `ExtractAndAddVersionCommand` — re-extraction into an existing recipe's version history
+1. `ExtractAndAddVersionCommand` — re-extraction into an existing recipe's version history
+2. opencode.ai IRecipeExtractor implementation 
 3. Broader prompt testing (other languages, messier source posts)
-4. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)
-5. iOS ingestion via Shortcuts
+4. iOS ingestion via Shortcuts
+5. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?

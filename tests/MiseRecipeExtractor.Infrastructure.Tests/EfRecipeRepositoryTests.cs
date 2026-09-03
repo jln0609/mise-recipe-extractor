@@ -115,4 +115,42 @@ public class EfRecipeRepositoryTests : IDisposable
         Assert.Equal(RecipeStatus.Tested, verified.CurrentVersion.Status);
         Assert.Equal("Tested and adjusted seasoning.", verified.CurrentVersion.Notes);
     }
+
+    [Fact]
+    public async Task DeleteAsync_RemovesRecipeAndAllChildEntities()
+    {
+        // arrange
+        var (_, writeRepo) = CreateScope();
+        
+        Recipe recipe = new Recipe { Source = new SourceMetadata { Platform = "Xiaohongshu" } };
+        recipe.AddVersion(
+            title: new LocalizedText { Original = "红烧肉" },
+            ingredients: new List<Ingredient>
+            {
+                new Ingredient
+                {
+                    Name = new LocalizedText { Original = "猪肉" },
+                    Quantity = new Quantity { OriginalText = "500g", Confidence = ConfidenceLevel.Explicit }
+                }
+            },
+            steps: new List<Step>
+            {
+                new Step { Order = 1, Text = new LocalizedText { Original = "切块" } }
+            });
+        await writeRepo.AddAsync(recipe);
+        
+        // act
+        var (_, deleteRepo) = CreateScope();
+        await deleteRepo.DeleteAsync(recipe.Id);
+        
+        // assert
+        var (verifyContext, verifyRepo) = CreateScope();
+        
+        Recipe? deletedRecipe = await verifyRepo.GetByIdAsync(recipe.Id);
+        Assert.Null(deletedRecipe);
+        
+        Assert.Empty(await verifyContext.Set<RecipeVersion>().Where(v => v.Id == recipe.CurrentVersion.Id).ToListAsync());
+        Assert.Empty(await verifyContext.Set<Ingredient>().ToListAsync());
+        Assert.Empty(await verifyContext.Set<Step>().ToListAsync());
+    }
 }

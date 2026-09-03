@@ -9,4 +9,5 @@ public class RecipeResponse
     public string TitleOriginal { get; set; } = "";
     public string? TitleTranslated { get; set; }
     public string Status { get; set; } = "";
+    public List<string> Warnings { get; set; } = new();
 }

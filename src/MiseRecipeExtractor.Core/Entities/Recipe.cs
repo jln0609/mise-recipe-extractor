@@ -11,7 +11,7 @@ public class Recipe
     public RecipeVersion CurrentVersion => Versions.MaxBy(v => v.VersionNumber)!;
 
     public RecipeVersion AddVersion(LocalizedText title, List<Ingredient> ingredients, List<Step> steps,
-        RecipeStatus status = RecipeStatus.Draft)
+        RecipeStatus status = RecipeStatus.Draft, List<string>? warnings = null)
     {
         int nextVersionNumber = Versions.Count == 0 ? 1 : Versions.Max(v => v.VersionNumber) + 1;
         RecipeVersion version = new RecipeVersion
@@ -20,7 +20,8 @@ public class Recipe
             Title = title,
             Ingredients = ingredients,
             Steps = steps,
-            Status = status
+            Status = status,
+            Warnings = warnings ?? new()
         };
         Versions.Add(version);
         return version;

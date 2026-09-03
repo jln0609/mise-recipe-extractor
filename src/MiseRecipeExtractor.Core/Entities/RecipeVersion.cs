@@ -10,6 +10,7 @@ public class RecipeVersion
     public LocalizedText Title { get; init; } = null!;
     public List<Ingredient> Ingredients { get; init; } = new();
     public List<Step> Steps { get; init; } = new();
+    public List<string> Warnings { get; init; } = new(); 
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 }

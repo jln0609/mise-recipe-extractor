@@ -22,7 +22,8 @@ public class ExtractAndCreateRecipeCommand(IRecipeExtractor extractor, IRecipeRe
         recipe.AddVersion(
             title: extraction.ExtractedVersion.Title,
             ingredients: extraction.ExtractedVersion.Ingredients,
-            steps: extraction.ExtractedVersion.Steps);
+            steps: extraction.ExtractedVersion.Steps,
+            warnings: extraction.Warnings);
         
         await repository.AddAsync(recipe);
         

@@ -39,5 +39,7 @@ public class ExtractionsControllerTests : IClassFixture<CustomWebApplicationFact
         Assert.Equal("测试食谱", recipe.TitleOriginal);
         Assert.Equal("Test Recipe", recipe.TitleTranslated);
         Assert.Equal("Draft", recipe.Status);
+        Assert.Single(recipe.Warnings);
+        Assert.Equal("Fake warning for test purposes.", recipe.Warnings[0]);
     }
 }

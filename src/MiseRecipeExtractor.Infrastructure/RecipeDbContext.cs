@@ -39,6 +39,8 @@ public class RecipeDbContext(DbContextOptions<RecipeDbContext> options) : DbCont
                 .WithOne()
                 .HasForeignKey("RecipeVersionId")
                 .OnDelete(DeleteBehavior.Cascade);
+
+            version.Property(v => v.Warnings);
         });
 
         modelBuilder.Entity<Ingredient>(ingredient =>

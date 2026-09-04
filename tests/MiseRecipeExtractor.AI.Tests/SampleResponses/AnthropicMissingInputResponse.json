@@ -1,0 +1,8 @@
+﻿{
+  "id": "msg_test123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    { "type": "tool_use", "id": "toolu_test123", "name": "extract_recipe" }
+  ]
+}

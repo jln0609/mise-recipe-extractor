@@ -1,0 +1,8 @@
+﻿{
+  "id": "msg_test123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    { "type": "text", "text": "I couldn't extract a recipe from these images." }
+  ]
+}

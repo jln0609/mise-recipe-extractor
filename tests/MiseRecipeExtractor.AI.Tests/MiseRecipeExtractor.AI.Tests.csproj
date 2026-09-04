@@ -21,5 +21,14 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MiseRecipeExtractor.AI\MiseRecipeExtractor.AI.csproj" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="SampleResponses\AnthropicValidToolUseResponse.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SampleResponses\AnthropicErrorStatusResponse.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SampleResponses\AnthropicMissingContentResponse.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SampleResponses\AnthropicNoToolUseResponse.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SampleResponses\AnthropicMissingInputResponse.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="SampleResponses\AnthropicUnrecognizedConfidenceResponse.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

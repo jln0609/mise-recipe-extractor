@@ -1,0 +1,41 @@
+﻿{
+  "id": "msg_test123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test123",
+      "name": "extract_recipe",
+      "input": {
+        "detectedSourceLanguage": "zh",
+        "title": {
+          "original": "测试食谱",
+          "translated": "Test Recipe"
+        },
+        "ingredients": [
+          {
+            "name": { "original": "神秘配料", "translated": "Mystery Ingredient" },
+            "quantity": {
+              "originalText": "一些",
+              "amount": null,
+              "unit": null,
+              "confidence": "VeryConfident"
+            },
+            "notes": null
+          }
+        ],
+        "steps": [
+          {
+            "order": 1,
+            "text": { "original": "混合", "translated": "Mix" },
+            "durationSeconds": null,
+            "orderIsInferred": false
+          }
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "stop_reason": "tool_use"
+}

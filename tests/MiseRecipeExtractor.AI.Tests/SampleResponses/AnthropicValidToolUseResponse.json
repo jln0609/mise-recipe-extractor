@@ -1,0 +1,62 @@
+﻿{
+  "id": "msg_test123",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test123",
+      "name": "extract_recipe",
+      "input": {
+        "detectedSourceLanguage": "zh",
+        "title": {
+          "original": "红烧肉",
+          "translated": "Braised Pork"
+        },
+        "ingredients": [
+          {
+            "name": { "original": "猪肉", "translated": "Pork" },
+            "quantity": {
+              "originalText": "500g",
+              "amount": 500,
+              "unit": "g",
+              "confidence": "Explicit"
+            },
+            "notes": null
+          },
+          {
+            "name": { "original": "盐", "translated": "Salt" },
+            "quantity": {
+              "originalText": "适量",
+              "amount": null,
+              "unit": null,
+              "confidence": "Unspecified"
+            },
+            "notes": null
+          }
+        ],
+        "steps": [
+          {
+            "order": 1,
+            "text": { "original": "切块", "translated": "Cut into pieces" },
+            "durationSeconds": null,
+            "orderIsInferred": false
+          },
+          {
+            "order": 2,
+            "text": { "original": "炖煮一小时", "translated": "Braise for one hour" },
+            "durationSeconds": 3600,
+            "orderIsInferred": false
+          }
+        ],
+        "warnings": ["Bottom of the image was slightly cut off."]
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "usage": {
+    "input_tokens": 1200,
+    "output_tokens": 340
+  }
+}

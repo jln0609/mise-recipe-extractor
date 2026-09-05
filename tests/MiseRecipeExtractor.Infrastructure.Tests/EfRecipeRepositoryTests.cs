@@ -117,6 +117,20 @@ public class EfRecipeRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateAsync_NonExistentRecipe_ThrowsInvalidOperationException()
+    {
+        // arrange
+        var (_, repository) = CreateScope();
+
+        Recipe recipe = new Recipe();
+        
+        // act & assert
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => repository.UpdateAsync(recipe));
+        
+        Assert.Contains(recipe.Id.ToString(), exception.Message);
+    }
+
+    [Fact]
     public async Task DeleteAsync_RemovesRecipeAndAllChildEntities()
     {
         // arrange
@@ -152,5 +166,15 @@ public class EfRecipeRepositoryTests : IDisposable
         Assert.Empty(await verifyContext.Set<RecipeVersion>().Where(v => v.Id == recipe.CurrentVersion.Id).ToListAsync());
         Assert.Empty(await verifyContext.Set<Ingredient>().ToListAsync());
         Assert.Empty(await verifyContext.Set<Step>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task DeleteAsync_NonExistentRecipe_DoesNotThrow()
+    {
+        // arrange
+        var (_, repository) = CreateScope();
+        
+        // act/assert
+        await repository.DeleteAsync(Guid.NewGuid());
     }
 }

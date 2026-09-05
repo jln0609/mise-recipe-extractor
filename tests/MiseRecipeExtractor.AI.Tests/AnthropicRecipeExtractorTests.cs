@@ -22,6 +22,25 @@ public class AnthropicRecipeExtractorTests
         await Assert.ThrowsAsync<NotSupportedException>(
             () => extractor.ExtractAsync(new List<byte[]>() { notAnImage }));
     }
+
+    [Fact]
+    public async Task ExtractAsync_JpegImage_DoesNotThrow()
+    {
+        var extractor = CreateExtractorWithFixture("AnthropicValidToolUseResponse.json");
+        byte[] fakeJpegBytes = { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10 };
+        
+        await extractor.ExtractAsync([fakeJpegBytes]);
+    }
+    
+    [Fact]
+    public async Task ExtractAsync_MultipleImages_DoesNotThrow()
+    {
+        var extractor = CreateExtractorWithFixture("AnthropicValidToolUseResponse.json");
+        byte[] pngBytes = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        byte[] jpegBytes = { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10 };
+        
+        await extractor.ExtractAsync(new List<byte[]> { pngBytes, jpegBytes });
+    }
     
     [Fact]
     public async Task ExtractAsync_ValidToolUseResponse_ReturnsCorrectlyMappedExtractionResult()

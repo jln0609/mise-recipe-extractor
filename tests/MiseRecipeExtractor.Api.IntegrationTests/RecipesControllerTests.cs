@@ -14,7 +14,7 @@ public class RecipesControllerTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task GetByID_ReturnsRecipeCreatedViaPost()
+    public async Task GetById_ReturnsRecipeCreatedViaPost()
     {
         // arrange
         var createRequest = new CreateRecipeRequest
@@ -46,5 +46,52 @@ public class RecipesControllerTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("红烧肉", retrieved.TitleOriginal);
         Assert.Equal("Braised Pork", retrieved.TitleTranslated);
         Assert.Equal("Draft", retrieved.Status);
+    }
+
+    [Fact]
+    public async Task GetById_NonExistentId_ReturnsNotFound()
+    {
+        // act
+        HttpResponseMessage response = await _client.GetAsync($"/api/recipes/{Guid.NewGuid()}");
+        
+        // assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_ReturnsAllPersistedRecipes()
+    {
+        // arrange
+        var firstRequest = new CreateRecipeRequest()
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "红烧肉",
+            TitleTranslated = "Braised Pork"
+        };
+        var secondRequest = new CreateRecipeRequest()
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "麻婆豆腐",
+            TitleTranslated = "Mapo Tofu"
+        };
+        
+        HttpResponseMessage firstPost = await _client.PostAsJsonAsync("/api/recipes", firstRequest);
+        HttpResponseMessage secondPost = await _client.PostAsJsonAsync("/api/recipes", secondRequest);
+        
+        RecipeResponse? first = await firstPost.Content.ReadFromJsonAsync<RecipeResponse>();
+        RecipeResponse? second = await secondPost.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        
+        // act
+        HttpResponseMessage getAllResponse = await _client.GetAsync($"/api/recipes");
+        
+        // assert
+        Assert.Equal(HttpStatusCode.OK, getAllResponse.StatusCode);
+        
+        List<RecipeResponse>? all = await getAllResponse.Content.ReadFromJsonAsync<List<RecipeResponse>>();
+        Assert.NotNull(all);
+        Assert.Contains(all, r => r.Id == first.Id && r.TitleTranslated == "Braised Pork");
+        Assert.Contains(all, r => r.Id == second.Id && r.TitleTranslated == "Mapo Tofu");
     }
 }

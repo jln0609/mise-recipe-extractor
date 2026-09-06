@@ -28,6 +28,7 @@ builder.Services.AddHttpClient<IRecipeExtractor, AnthropicRecipeExtractor>(clien
     });
 
 builder.Services.AddScoped<ExtractAndCreateRecipeCommand>();
+builder.Services.AddScoped<CreateAdjustedVersionCommand>();
 
 var app = builder.Build();
 

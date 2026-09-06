@@ -47,4 +47,21 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
         
         return CreatedAtAction(nameof(GetById), new { id = recipe.Id }, RecipeResponseMapper.ToResponse(recipe));
     }
+
+    [HttpPatch("{id}/tested")]
+    public async Task<ActionResult<RecipeResponse>> MarkTested(Guid id, MarkTestedRequest request)
+    {
+        Recipe? recipe = await repository.GetByIdAsync(id);
+        if (recipe == null)
+        {
+            return NotFound();
+        }
+
+        recipe.CurrentVersion.Status = RecipeStatus.Tested;
+        recipe.CurrentVersion.Notes = request.Notes;
+
+        await repository.UpdateAsync(recipe);
+        
+        return Ok(RecipeResponseMapper.ToResponse(recipe));
+    }
 }

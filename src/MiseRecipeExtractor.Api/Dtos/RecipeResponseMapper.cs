@@ -16,7 +16,8 @@ public static class RecipeResponseMapper
             TitleOriginal = current.Title.Original,
             TitleTranslated = current.Title.Translated,
             Status = current.Status.ToString(),
-            Warnings = current.Warnings
+            Warnings = current.Warnings,
+            Notes = current.Notes
         };
     }
 }

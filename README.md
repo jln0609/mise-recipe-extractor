@@ -17,6 +17,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `AnthropicRecipeExtractor` implements `IRecipeExtractor` via a direct call to the Anthropic Messages API, using tool-use (schema-constrained structured output) rather than prose-parsed JSON. Tested end-to-end against a real, moderately complex 4-image Xiaohongshu recipe post (mixed Chinese text, ingredient substitution notes, storage instructions) via a standalone sandbox console app (`tools/MiseRecipeExtractor.Sandbox`). Results: correct language detection, sensible translations, correct `ConfidenceLevel` assignment (explicit gram amounts vs. a genuinely vague "适量"/"appropriate amount" ingredient), successful multi-image merging into one coherent recipe, and useful, substantive entries in `Warnings` (a cross-referenced cut-off text recovered from a second image; a text/photo discrepancy noted; a recipe-yield-vs-photo discrepancy noted). Sample output and cost data: [`docs/sample-extraction-260829.md`](docs/sample-extraction-260829.md).
 - **`POST /api/extractions` implemented and verified end-to-end**: multipart image upload → `ExtractionsController` → `ExtractAndCreateRecipeCommand` (Core use case) → `AnthropicRecipeExtractor` → `Recipe`/`RecipeVersion` construction (correct `VersionNumber` via `Recipe.AddVersion`, `DetectedSourceLanguage` → `SourceMetadata.OriginalLanguage`) → `EfRecipeRepository` persistence → returned as `RecipeResponse`. Confirmed the persisted recipe round-trips correctly through the separate `GET /api/recipes` endpoint too. Tested from a clean clone on a different machine than where it was built.
 - **21 tests across all four projects.** `Api.IntegrationTests`: extraction/recipe round trips (via `WebApplicationFactory` + in-memory SQLite + `FakeRecipeExtractor`), 404s, list retrieval. `Infrastructure.Tests`: `EfRecipeRepository` CRUD, `UpdateAsync` reconciliation, cascade delete, not-found handling. `AI.Tests`: `AnthropicRecipeExtractor` via a fake `HttpMessageHandler` — response mapping, image-format handling, malformed-response errors, confidence-level fallback.
+- `PATCH /api/recipes/{id}/tested` implemented and tested (manual + 3 integration tests): marks a recipe's current version `Tested`, sets `Notes`, persists, and round-trips via a separate `GET`.
 
 ## Architecture
 
@@ -131,12 +132,12 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - Core entities originally used C# primary constructors (immutable, constructor-enforced). This was reverted to `init`-only properties with no custom constructors, after hitting a confirmed open EF Core bug: complex types (`LocalizedText`, `Quantity`) cannot be constructor-bound when nested inside another type's primary constructor. `init` properties preserve immutability-after-construction without triggering this limitation.
 - `EfRecipeRepository.UpdateAsync` reconciles `Recipe` and top-level `RecipeVersion` fields precisely (only changed fields generate SQL updates), but does not reconcile `Ingredient`/`Step` fields within an *already-saved* version. This is deliberate: the current domain model treats a `RecipeVersion`'s ingredients/steps as an immutable snapshot — "adjusting" a recipe is expected to mean creating a new version via `Recipe.AddVersion`, not editing an existing version's ingredients in place. Revisit if in-place editing of `Draft`-status versions becomes a real feature.
 - `AnthropicRecipeExtractor.MapToExtractionResult` sets `RecipeVersion.VersionNumber` to a placeholder value of `1`, since `IRecipeExtractor` is stateless and has no knowledge of whether an extraction is for a new `Recipe` or a re-extraction being added to an existing one's version history. Callers must treat this as provisional and always go through `Recipe.AddVersion` (which handles correct auto-incrementing) rather than relying on the returned value directly. Only `AnthropicRecipeExtractor` exists so far — this note will need revisiting once the Core use-case layer (`ExtractAndCreateRecipeCommand` / `ExtractAndAddVersionCommand`, not yet built) is implemented, since it's the natural place to resolve this properly.
-  - Resolved for the new-recipe path: `ExtractAndCreateRecipeCommand` now exists and correctly goes through `Recipe.AddVersion` rather than trusting the placeholder. Still open for re-extraction into an *existing* recipe's history — `ExtractAndAddVersionCommand` isn't built yet.
-
 - `AnthropicRecipeExtractor` currently only supports PNG and JPEG images (detected via byte signature, not file extension). HEIC (the default format for photos taken directly on iOS) is not yet handled. Not currently a problem since iOS screenshots specifically are PNG by convention regardless of the photo-format setting, but worth revisiting if actual camera photos (not screenshots) are ever fed in directly.
 - `Quantity` has no `Translated` field — only `OriginalText` plus optional numeric `Amount`/`Unit`. For purely numeric quantities this is fine (`50g` needs no translation), but word-based quantity descriptions (e.g. "一张"/"one sheet") currently have no English rendering anywhere in the data. Deliberately deferred; will need a schema/prompt/domain-model/migration change together when addressed.
 - `CreateRecipeRequest.Platform` previously defaulted to `"Xiaohongshu"` — a leftover from before the project's scope generalized away from a single-platform assumption. Fixed to default to `string.Empty`, consistent with `CreateExtractionRequest`. No request validation (e.g. rejecting an empty platform) added yet.
-  d
+- **Recipe naming/duplicate detection** — nothing stops the same dish being extracted twice as separate `Recipe`s with similar titles. Possibly detection + note on extraction/option to change name?
+- `RecipesController.MarkTested` overwrites `RecipeVersion.Notes` outright rather than appending/accumulating. Could need revisiting (e.g. a notes history, or blocking re-marking) if re-testing the same version becomes a real use case.
+- EF Core migration drift: `Warnings` was added to `RecipeVersion` with no migration ever generated for it, causing a runtime `SQLite Error 1: no column named Warnings` on recipe creation. Fixed via `dotnet ef migrations add` + `database update`. Nothing currently catches this automatically — worth periodically checking `dotnet ef migrations has-pending-model-changes` after model changes.
 
 ## Running locally
 
@@ -181,8 +182,7 @@ dotnet run
 
 ## Next steps
 
-1. `ExtractAndAddVersionCommand` — re-extraction into an existing recipe's version history
-2. opencode.ai IRecipeExtractor implementation 
-3. Broader prompt testing (other languages, messier source posts)
-4. iOS ingestion via Shortcuts
-5. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+1. opencode.ai IRecipeExtractor implementation
+2. Broader prompt testing (other languages, messier source posts)
+3. iOS ingestion via Shortcuts
+4. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?

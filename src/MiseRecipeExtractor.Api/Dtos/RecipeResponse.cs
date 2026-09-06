@@ -10,4 +10,5 @@ public class RecipeResponse
     public string? TitleTranslated { get; set; }
     public string Status { get; set; } = "";
     public List<string> Warnings { get; set; } = new();
+    public string? Notes { get; set; }
 }

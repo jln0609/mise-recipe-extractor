@@ -94,4 +94,79 @@ public class RecipesControllerTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Contains(all, r => r.Id == first.Id && r.TitleTranslated == "Braised Pork");
         Assert.Contains(all, r => r.Id == second.Id && r.TitleTranslated == "Mapo Tofu");
     }
+
+    [Fact]
+    public async Task MarkTested_UpdatesStatusAndNotes()
+    {
+        // arrange
+        var createRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "红烧肉",
+            TitleTranslated = "Braised Pork"
+        };
+        
+        HttpResponseMessage postResponse = await _client.PostAsJsonAsync("/api/recipes", createRequest);
+        RecipeResponse? created = await postResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(created);
+        
+        var markTestedRequest = new MarkTestedRequest
+        {
+            Notes = "Turned out great, needed 10 extra minutes in the oven."
+        };
+        
+        // act
+        HttpResponseMessage patchResponse = await _client.PatchAsJsonAsync($"/api/recipes/{created.Id}/tested", markTestedRequest);
+        
+        // assert
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+
+        RecipeResponse? result = await patchResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(result);
+        Assert.Equal("Tested", result.Status);
+        Assert.Equal("Turned out great, needed 10 extra minutes in the oven.", result.Notes);
+    }
+
+    [Fact]
+    public async Task MarkTested_PersistsAcrossSeparateGet()
+    {
+        // arrange
+        var createRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "红烧肉",
+            TitleTranslated = "Braised Pork"
+        };
+        
+        HttpResponseMessage postResponse = await _client.PostAsJsonAsync("/api/recipes", createRequest);
+        RecipeResponse? created = await postResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(created);
+        
+        var markTestedRequest = new MarkTestedRequest { Notes = "Worked well." };
+        await _client.PatchAsJsonAsync($"/api/recipes/{created.Id}/tested", markTestedRequest);
+        
+        // act
+        HttpResponseMessage getResponse = await _client.GetAsync($"/api/recipes/{created.Id}");
+
+        // assert
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        
+        RecipeResponse? retrieved = await getResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(retrieved);
+        Assert.Equal("Tested", retrieved.Status);
+        Assert.Equal("Worked well.", retrieved.Notes);
+    }
+
+    [Fact]
+    public async Task MarkTested_NonExistentId_ReturnsNotFound()
+    {
+        // arrange
+        var markTestedRequest = new MarkTestedRequest { Notes = "Doesn't matter." };
+        
+        // act
+        HttpResponseMessage response = await _client.PatchAsJsonAsync($"/api/recipes/{Guid.NewGuid()}/tested", markTestedRequest);
+
+        // assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

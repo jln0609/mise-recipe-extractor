@@ -35,15 +35,25 @@ public class EfRecipeRepository(RecipeDbContext dbContext) : IRecipeRepository
 
         foreach (RecipeVersion version in recipe.Versions)
         {
-            RecipeVersion? existingVersion = existing.Versions.FirstOrDefault(v => v.Id == version.Id);
+            bool alreadyPersisted = await dbContext.Set<RecipeVersion>().AnyAsync(v => v.Id == version.Id);
 
-            if (existingVersion == null)
+            if (alreadyPersisted)
             {
-                existing.Versions.Add(version);
+                var trackedVersion = existing.Versions.First(v => v.Id == version.Id);
+                dbContext.Entry(trackedVersion).CurrentValues.SetValues(version);
             }
             else
             {
-                dbContext.Entry(existingVersion).CurrentValues.SetValues(version);
+                dbContext.Add(version);
+                dbContext.Entry(version).State = EntityState.Added;
+                foreach (Ingredient ingredient in version.Ingredients)
+                {
+                    dbContext.Entry(ingredient).State = EntityState.Added;
+                }
+                foreach (Step step in version.Steps)
+                {
+                    dbContext.Entry(step).State = EntityState.Added;
+                }
             }
         }
         

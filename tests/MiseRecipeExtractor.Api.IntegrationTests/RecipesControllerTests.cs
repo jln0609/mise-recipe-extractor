@@ -169,4 +169,71 @@ public class RecipesControllerTests : IClassFixture<CustomWebApplicationFactory>
         // assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+    
+    [Fact]
+    public async Task Delete_RemovesRecipe()
+    {
+        // arrange
+        var createRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "红烧肉",
+            TitleTranslated = "Braised Pork"
+        };
+
+        HttpResponseMessage postResponse = await _client.PostAsJsonAsync("/api/recipes", createRequest);
+        RecipeResponse? created = await postResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(created);
+
+        // act
+        HttpResponseMessage deleteResponse = await _client.DeleteAsync($"/api/recipes/{created.Id}");
+
+        // assert
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        HttpResponseMessage getResponse = await _client.GetAsync($"/api/recipes/{created.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+    
+    [Fact]
+    public async Task Delete_NonExistentId_ReturnsNotFound()
+    {
+        // act
+        HttpResponseMessage response = await _client.DeleteAsync($"/api/recipes/{Guid.NewGuid()}");
+
+        // assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+    
+    [Fact]
+    public async Task Delete_DoesNotAffectOtherRecipes()
+    {
+        // arrange
+        var firstRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "红烧肉",
+            TitleTranslated = "Braised Pork"
+        };
+        var secondRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "麻婆豆腐",
+            TitleTranslated = "Mapo Tofu"
+        };
+
+        HttpResponseMessage firstPost = await _client.PostAsJsonAsync("/api/recipes", firstRequest);
+        HttpResponseMessage secondPost = await _client.PostAsJsonAsync("/api/recipes", secondRequest);
+        RecipeResponse? first = await firstPost.Content.ReadFromJsonAsync<RecipeResponse>();
+        RecipeResponse? second = await secondPost.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+
+        // act
+        await _client.DeleteAsync($"/api/recipes/{first.Id}");
+
+        // assert
+        HttpResponseMessage getResponse = await _client.GetAsync($"/api/recipes/{second.Id}");
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+    }
 }

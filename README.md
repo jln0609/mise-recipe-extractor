@@ -21,6 +21,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `POST /api/recipes/{id}/versions` implemented and tested (manual + 3 integration tests): submits a manually-edited title/ingredients/steps, creates a new `RecipeVersion` via `Recipe.AddVersion` with status `Adjusted`, persists, and round-trips via a separate `GET`.
 - `GET /api/recipes/{id}/versions` and `GET /api/recipes/{id}/versions/{versionNumber}` implemented and tested (manual + 5 integration tests): return full version detail (title, ingredients, steps, warnings, notes) for all versions of a recipe, or one specific version by number. Confirms older versions remain untouched when a new version is added.
 - Dev/prod database split: `RecipeDbContext`'s connection string now comes from configuration (`ConnectionStrings:RecipeDb`), with `appsettings.Development.json` overriding it to a separate `recipes.dev.db`. Local `dotnet run` (Development by default) never touches the real `recipes.db`.
+- `DELETE /api/recipes/{id}` implemented and tested (manual + 3 integration tests): removes a recipe and its versions/ingredients/steps via cascade delete; confirmed other recipes are unaffected.
 
 ## Architecture
 

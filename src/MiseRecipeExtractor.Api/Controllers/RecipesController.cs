@@ -64,4 +64,18 @@ public class RecipesController(IRecipeRepository repository) : ControllerBase
         
         return Ok(RecipeResponseMapper.ToResponse(recipe));
     }
+    
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        Recipe? recipe = await repository.GetByIdAsync(id);
+        if (recipe == null)
+        {
+            return NotFound();
+        }
+
+        await repository.DeleteAsync(id);
+
+        return NoContent();
+    }
 }

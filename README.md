@@ -168,6 +168,15 @@ Invoke-RestMethod -Uri "http://localhost:5249/api/recipes" -Method Post -Content
 Invoke-RestMethod -Uri "http://localhost:5249/api/recipes"
 ```
 
+## Switching between databases
+
+Two `launchSettings.json` profiles control which SQLite database is used:
+
+- `dotnet run --project src/MiseRecipeExtractor.Api` (default `http`/`https` profile, `Development`) → `recipes.dev.db`
+- `dotnet run --project src/MiseRecipeExtractor.Api --launch-profile Local` → the real `recipes.db`
+
+Both run on `http://localhost:5249`, so only one should be running at a time.
+
 ## Running tests
 
 ```powershell

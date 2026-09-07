@@ -10,8 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+string connectionString = builder.Configuration.GetConnectionString("RecipeDb")
+                          ?? throw new InvalidOperationException("ConnectionStrings:ReipeDb is not configured.");
+
 builder.Services.AddDbContext<RecipeDbContext>(options =>
-    options.UseSqlite("Data Source=recipes.db", sqliteOptions => 
+    options.UseSqlite(connectionString, sqliteOptions => 
         sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 builder.Services.AddScoped<IRecipeRepository, EfRecipeRepository>();

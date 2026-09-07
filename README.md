@@ -20,6 +20,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `PATCH /api/recipes/{id}/tested` implemented and tested (manual + 3 integration tests): marks a recipe's current version `Tested`, sets `Notes`, persists, and round-trips via a separate `GET`.
 - `POST /api/recipes/{id}/versions` implemented and tested (manual + 3 integration tests): submits a manually-edited title/ingredients/steps, creates a new `RecipeVersion` via `Recipe.AddVersion` with status `Adjusted`, persists, and round-trips via a separate `GET`.
 - `GET /api/recipes/{id}/versions` and `GET /api/recipes/{id}/versions/{versionNumber}` implemented and tested (manual + 5 integration tests): return full version detail (title, ingredients, steps, warnings, notes) for all versions of a recipe, or one specific version by number. Confirms older versions remain untouched when a new version is added.
+- Dev/prod database split: `RecipeDbContext`'s connection string now comes from configuration (`ConnectionStrings:RecipeDb`), with `appsettings.Development.json` overriding it to a separate `recipes.dev.db`. Local `dotnet run` (Development by default) never touches the real `recipes.db`.
 
 ## Architecture
 
@@ -185,7 +186,11 @@ dotnet run
 
 ## Next steps
 
-1. opencode.ai IRecipeExtractor implementation
-2. Broader prompt testing (other languages, messier source posts)
-3. iOS ingestion via Shortcuts
-4. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+1. Reachability from phone (same-network IP, or Tailscale/similar) — prerequisite for iOS ingestion
+2. iOS ingestion via Shortcuts
+3. A way to trigger "mark tested + note" without hand-built requests (a Shortcut or minimal UI)
+4. A way to browse existing recipes (a Shortcut output or minimal UI)
+5. A way to submit an adjusted version (ingredients/steps) without hand-typing JSON — likely needs real UI, unlike 3/4
+6. opencode.ai IRecipeExtractor implementation
+7. Broader prompt testing (other languages, messier source posts)
+8. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?

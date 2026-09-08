@@ -22,6 +22,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `GET /api/recipes/{id}/versions` and `GET /api/recipes/{id}/versions/{versionNumber}` implemented and tested (manual + 5 integration tests): return full version detail (title, ingredients, steps, warnings, notes) for all versions of a recipe, or one specific version by number. Confirms older versions remain untouched when a new version is added.
 - Dev/prod database split: `RecipeDbContext`'s connection string now comes from configuration (`ConnectionStrings:RecipeDb`), with `appsettings.Development.json` overriding it to a separate `recipes.dev.db`. Local `dotnet run` (Development by default) never touches the real `recipes.db`.
 - `DELETE /api/recipes/{id}` implemented and tested (manual + 3 integration tests): removes a recipe and its versions/ingredients/steps via cascade delete; confirmed other recipes are unaffected.
+- **Reachable from other devices on the same Wi-Fi network**: Kestrel's `applicationUrl` in `launchSettings.json` changed from `localhost` to `0.0.0.0` (binds to all network interfaces, not just loopback) across all three profiles. Requires port 5249 to be opened for inbound traffic. Verified end-to-end: phone browser on the same Wi-Fi successfully hits `GET /api/recipes` against the PC's LAN IP.
 
 ## Architecture
 
@@ -196,11 +197,11 @@ dotnet run
 
 ## Next steps
 
-1. Reachability from phone (same-network IP, or Tailscale/similar) — prerequisite for iOS ingestion
-2. iOS ingestion via Shortcuts
-3. A way to trigger "mark tested + note" without hand-built requests (a Shortcut or minimal UI)
-4. A way to browse existing recipes (a Shortcut output or minimal UI)
-5. A way to submit an adjusted version (ingredients/steps) without hand-typing JSON — likely needs real UI, unlike 3/4
-6. opencode.ai IRecipeExtractor implementation
-7. Broader prompt testing (other languages, messier source posts)
-8. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+1. iOS ingestion via Shortcuts
+2. A way to trigger "mark tested + note" without hand-built requests (a Shortcut or minimal UI)
+3. A way to browse existing recipes (a Shortcut output or minimal UI)
+4. A way to submit an adjusted version (ingredients/steps) without hand-typing JSON — likely needs real UI, unlike 2/3
+5. opencode.ai IRecipeExtractor implementation
+6. Broader prompt testing (other languages, messier source posts)
+7. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+8. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current iOS ingestion work

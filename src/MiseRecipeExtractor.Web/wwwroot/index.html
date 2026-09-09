@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mise</title>
+</head>
+<body>
+    <h1>Mise</h1>
+    
+    <form id="extraction-form">
+        <div>
+            <label for="images">Screenshots</label>
+            <input type="file" id="images" accept="image/*" multiple required>
+        </div>
+        <div>
+            <label for="platform">Platform</label>
+            <input type="text" id="platform" value="Xiaohongshu" required>
+        </div>
+        <div>
+            <label for="source-url">Source URL (optional)</label>
+            <input type="url" id="source-url">
+        </div>
+        <button type="submit">Extract Recipe</button>
+    </form>
+    
+    <p id="status"></p>
+    
+    <script type="module" src="js/index.js"></script>
+</body>
+</html>

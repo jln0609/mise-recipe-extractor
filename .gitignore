@@ -8,3 +8,6 @@ test screenshots/
 *.db
 *.db-shm
 *.db-wal
+# compiled JS & node
+**/wwwroot/js/
+node_modules/

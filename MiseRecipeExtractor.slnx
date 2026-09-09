@@ -4,6 +4,7 @@
     <Project Path="src/MiseRecipeExtractor.Api/MiseRecipeExtractor.Api.csproj" />
     <Project Path="src/MiseRecipeExtractor.Core/MiseRecipeExtractor.Core.csproj" />
     <Project Path="src/MiseRecipeExtractor.Infrastructure/MiseRecipeExtractor.Infrastructure.csproj" />
+    <Project Path="src/MiseRecipeExtractor.Web/MiseRecipeExtractor.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MiseRecipeExtractor.AI.Tests/MiseRecipeExtractor.AI.Tests.csproj" />

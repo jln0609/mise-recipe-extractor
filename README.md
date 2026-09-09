@@ -24,6 +24,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `DELETE /api/recipes/{id}` implemented and tested (manual + 3 integration tests): removes a recipe and its versions/ingredients/steps via cascade delete; confirmed other recipes are unaffected.
 - **Reachable from other devices on the same Wi-Fi network**: Kestrel's `applicationUrl` in `launchSettings.json` changed from `localhost` to `0.0.0.0` (binds to all network interfaces, not just loopback) across all three profiles. Requires port 5249 to be opened for inbound traffic. Verified end-to-end: phone browser on the same Wi-Fi successfully hits `GET /api/recipes` against the PC's LAN IP.
 - **`MiseRecipeExtractor.Web`**: a small static-file host project (plain HTML/TypeScript, no framework or bundler — native ES modules) serving a recipe-extraction upload form. Verified end-to-end from a phone on the same Wi-Fi network: selects screenshots via the browser's native multi-file picker, POSTs them as multipart form data to `/api/extractions`, and displays the resulting recipe title. Required a Cross-Origin Resource Sharing (CORS) policy on `Api` allowing the `Web` app's origins.
+- **Recipe browsing in `MiseRecipeExtractor.Web`**: `recipes.html` lists all recipes (title, linking to detail); `recipe.html` shows a specific recipe's ingredients, steps, notes (hidden when absent), and warnings (hidden when absent), with a version dropdown that re-fetches and re-renders a different `RecipeVersion` in place, no page reload. Uses `GET /api/recipes`, `GET /api/recipes/{id}/versions`, and `GET /api/recipes/{id}/versions/{versionNumber}`. Verified end-to-end in-browser.
 
 ## Architecture
 
@@ -213,10 +214,9 @@ dotnet run
 
 ## Next steps
 
-1. Browse existing recipes from `MiseRecipeExtractor.Web` (list + detail view, using the already-written `getRecipes()` in `api.ts`)
-2. A way to trigger "mark tested + note" from `Web`, without hand-built requests
-3. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
-4. opencode.ai IRecipeExtractor implementation
-5. Broader prompt testing (other languages, messier source posts)
-6. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
-7. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work
+1. A way to trigger "mark tested + note" from `Web`, without hand-built requests
+2. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
+3. opencode.ai IRecipeExtractor implementation
+4. Broader prompt testing (other languages, messier source posts)
+5. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+6. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work

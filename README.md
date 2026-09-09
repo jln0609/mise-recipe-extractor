@@ -5,7 +5,7 @@ An application that uses AI (multimodal vision/language models) to extract recip
 The name comes from *mise en place* — having everything in its place before you start cooking. The app's job is to take the chaos of a screenshot (mixed Chinese/English text, vague quantities, emoji-as-structure) and put it in its place.
 
 
-## Status: full pipeline working end-to-end — screenshot upload → AI extraction → persistence → retrieval, via the real HTTP API
+## Status: full pipeline working end-to-end — screenshot upload and recipe browsing now go through a browser-based front end talking to the HTTP API, with AI extraction and persistence handled server-side as before
 
 
 ## What's working right now

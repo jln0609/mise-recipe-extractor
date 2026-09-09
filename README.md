@@ -23,6 +23,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - Dev/prod database split: `RecipeDbContext`'s connection string now comes from configuration (`ConnectionStrings:RecipeDb`), with `appsettings.Development.json` overriding it to a separate `recipes.dev.db`. Local `dotnet run` (Development by default) never touches the real `recipes.db`.
 - `DELETE /api/recipes/{id}` implemented and tested (manual + 3 integration tests): removes a recipe and its versions/ingredients/steps via cascade delete; confirmed other recipes are unaffected.
 - **Reachable from other devices on the same Wi-Fi network**: Kestrel's `applicationUrl` in `launchSettings.json` changed from `localhost` to `0.0.0.0` (binds to all network interfaces, not just loopback) across all three profiles. Requires port 5249 to be opened for inbound traffic. Verified end-to-end: phone browser on the same Wi-Fi successfully hits `GET /api/recipes` against the PC's LAN IP.
+- **`MiseRecipeExtractor.Web`**: a small static-file host project (plain HTML/TypeScript, no framework or bundler — native ES modules) serving a recipe-extraction upload form. Verified end-to-end from a phone on the same Wi-Fi network: selects screenshots via the browser's native multi-file picker, POSTs them as multipart form data to `/api/extractions`, and displays the resulting recipe title. Required a Cross-Origin Resource Sharing (CORS) policy on `Api` allowing the `Web` app's origins.
 
 ## Architecture
 
@@ -34,6 +35,7 @@ src/
 - MiseRecipeExtractor.Infrastructure/  — persistence adapter (EF Core, coming next). Depends on Core.
 - MiseRecipeExtractor.AI/              — AI extraction adapter (Anthropic API). Depends on Core.
 - MiseRecipeExtractor.Api/             — ASP.NET Core Web API. Composition root + driving adapter. Depends on Core, Infrastructure, AI.
+- MiseRecipeExtractor.Web/             — static-file host serving the front end. No project references; calls Api over HTTP.
 
 tests/
 - MiseRecipeExtractor.Core.Tests/
@@ -48,6 +50,7 @@ tests/
 Core  ←  Infrastructure
 Core  ←  AI
 Core, Infrastructure, AI  ←  Api  (composition root)
+Web is not part of this graph — a separate process calling Api over HTTP.
 ```
 
 `Core` defines two ports so far:
@@ -58,8 +61,7 @@ Core, Infrastructure, AI  ←  Api  (composition root)
 
 `Core` also has its first **use case** (application service): `ExtractAndCreateRecipeCommand`, in `Core/UseCases/`. It orchestrates `IRecipeExtractor` + `IRecipeRepository` together — calls the extractor, builds a new `Recipe`/`SourceMetadata` from the result (including mapping `ExtractionResult.DetectedSourceLanguage`), adds the extracted content as version 1 via `Recipe.AddVersion` (which resolves the `VersionNumber` placeholder noted below), and persists it. This is the layer that was always meant to own "what does an extraction result actually become" — deliberately kept out of both `IRecipeExtractor` (stateless, no knowledge of new-vs-existing recipes) and the controller (thin HTTP boundary only).
 
-**Two separate controllers**, deliberately: `RecipesController` (`GET/POST /api/recipes`, `GET /api/recipes/{id}`) depends only on `IRecipeRepository` — plain CRUD over the recipe resource. `ExtractionsController` (`POST /api/extractions`) depends only on `ExtractAndCreateRecipeCommand` — a distinct operation with a different request shape (multipart file upload vs. JSON), different dependency weight (an external AI call, with its own latency/cost/failure modes, vs. plain local persistence), and a genuinely different realistic caller (e.g. the planned iOS Shortcut would call only `/api/extractions`, never touching `/api/recipes` directly). The two controllers share `RecipeResponse` and a `RecipeResponseMapper.ToResponse` static helper (both in `Api/Dtos/`) rather than duplicating the mapping — the only remaining coupling is `ExtractionsController` referencing `RecipesController`'s `GetById` action by name in `CreatedAtAction`, for a correct `Location` header.
-
+**Two separate controllers**, deliberately: `RecipesController` (`GET/POST /api/recipes`, `GET /api/recipes/{id}`) depends only on `IRecipeRepository` — plain CRUD over the recipe resource. `ExtractionsController` (`POST /api/extractions`) depends only on `ExtractAndCreateRecipeCommand` — a distinct operation with a different request shape (multipart file upload vs. JSON) and different dependency weight (an external AI call, with its own latency/cost/failure modes, vs. plain local persistence). The two controllers share `RecipeResponse` and a `RecipeResponseMapper.ToResponse` static helper (both in `Api/Dtos/`) rather than duplicating the mapping — the only remaining coupling is `ExtractionsController` referencing `RecipesController`'s `GetById` action by name in `CreatedAtAction`, for a correct `Location` header.
 
 ## Domain model
 
@@ -84,7 +86,7 @@ Value objects:
 - **Emoji-as-structure** — emoji in captions often function as semantic bullets/section markers (🔥 heat, ⏰ timing), not decoration; the extraction prompt needs to account for this.
 - **Confidence/ambiguity surfacing** — `Quantity.ConfidenceLevel` and `Step.OrderIsInferred` are the first-class ways ambiguity is represented, rather than silently resolved.
 
-## AI extraction: two parallel adapters (planned)
+## AI extraction: parallel adapters (implemented and planned)
 
 `IRecipeExtractor` will get two separate implementations in `AI`, both satisfying the same interface:
 
@@ -94,6 +96,11 @@ Value objects:
 
 The direct API version was built and validated first (simpler, keeps prompt/schema/parsing work in one language while that gets nailed down); the Agent SDK version follows.
 
+## Phone ingestion: Shortcuts abandoned in favor of a web form
+
+The original plan was an iOS Shortcut POSTing screenshots directly to `/api/extractions`. This hit a genuine, apparently long-standing Shortcuts limitation: "Get Contents of URL" cannot reliably send multiple files under one repeated multipart field name — confirmed directly via server-side logging (`Request.Form.Files.Count` stayed `1` regardless of how the Shortcut's Form fields were constructed), and corroborated by a multi-year-old, seemingly unfixed Apple Community report of the same "only the first item" pattern in a different Shortcuts mechanism.
+
+Rather than route around this (e.g. hardcoding a fixed number of image fields, or looping one request per image and losing the multi-image merge extraction depends on), the fix was to change ingestion clients entirely: a small web upload form (`MiseRecipeExtractor.Web`), opened from the phone's browser, using a native multi-file `<input>` and `FormData` — which browsers handle correctly.
 
 
 ## Video ingestion (future scope)
@@ -109,17 +116,14 @@ This is a good candidate for **Semantic Kernel** (Microsoft's .NET AI orchestrat
 This is a deliberately different problem from the structured extraction pipeline (`IRecipeExtractor`), where the sequence of steps is always fixed and known ahead of time — for that pipeline, plain orchestration code in `Core`'s use cases is simpler and sufficient; there's no ambiguity for an AI to resolve about *when* to call something. Semantic Kernel earns its place specifically once the flow becomes open-ended and user-driven, which the extraction pipeline currently isn't.
 
 
-## iOS ingestion (future scope)
-
-Planned approach: iOS Shortcuts app (or a Share Sheet integration) POSTs screenshots/videos to this API. No native iOS app planned initially — starting with the lowest-friction option (Shortcuts → webhook) before considering a Share Extension.
-
 ## Tech stack
 
 - **.NET 10** / **ASP.NET Core Web API** (controller-based, not minimal APIs — chosen partly to build a solid understanding of the controller model)
 - **xUnit** for testing
 - **EF Core** (Entity Framework Core) with **SQLite** — in place; entities use `init`-only properties (not primary constructors — see "Known open items" below) and `ComplexProperty` for value objects
 
-- AI provider — not yet integrated; Anthropic's API is the current plan
+- AI provider: currently Anthropic's API; opencode.ai adapter planned
+- **TypeScript**, compiled via `tsc`, no bundler — `MiseRecipeExtractor.Web`'s front end
 
 
 ## Why ASP.NET Core
@@ -144,6 +148,7 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `RecipesController.MarkTested` overwrites `RecipeVersion.Notes` outright rather than appending/accumulating. Could need revisiting (e.g. a notes history, or blocking re-marking) if re-testing the same version becomes a real use case.
 - EF Core migration drift: `Warnings` was added to `RecipeVersion` with no migration ever generated for it, causing a runtime `SQLite Error 1: no column named Warnings` on recipe creation. Fixed via `dotnet ef migrations add` + `database update`. Nothing currently catches this automatically — worth periodically checking `dotnet ef migrations has-pending-model-changes` after model changes.
 - `EfRecipeRepository.UpdateAsync` bug (found and fixed): adding a *new* `RecipeVersion` (with new `Ingredient`/`Step` children) to an already-tracked `Recipe` caused EF Core to mistakenly mark the new children `Modified` instead of `Added`, because change detection auto-tracks them (via the shared `Guid`-keyed identity map) before the reconciliation loop's own logic runs — producing `UPDATE`s for rows that were never inserted. Fixed by checking each version's existence directly against the database (`AnyAsync`) rather than trusting in-memory tracked state, and explicitly forcing `EntityState.Added` on a version's `Ingredients`/`Steps` only when it's genuinely new. `MarkTested`'s tests re-verified to confirm the fix didn't regress the "update fields on an already-persisted version" path.
+- `MiseRecipeExtractor.Web`'s `api.ts` hardcodes `API_BASE_URL` to the current LAN IP address, and `Api`'s CORS policy hardcodes the matching allowed origins. If the PC's LAN IP changes (DHCP reassignment), both need manual updating together, or requests will fail — the CORS failure mode is a somewhat cryptic browser console error rather than an obvious one. Not addressed yet; low priority for a single-user LAN setup, but worth a note if this ever moves beyond that.
 
 ## Running locally
 
@@ -153,6 +158,17 @@ dotnet run --project src/MiseRecipeExtractor.Api
 ```
 
 Server listens on `http://localhost:5249` (HTTP profile) per `launchSettings.json`.
+
+`MiseRecipeExtractor.Web` (the upload form front end) needs its TypeScript compiled once before first run, and after any `.ts` changes:
+
+```powershell
+cd src/MiseRecipeExtractor.Web
+npm install
+npx tsc
+dotnet run --project src/MiseRecipeExtractor.Web
+```
+
+Listens on `http://localhost:5081`.
 
 Example request (PowerShell — note: explicit UTF-8 byte conversion is required for non-ASCII text to survive the request correctly; passing a raw string to `-Body` can silently mangle Chinese characters depending on console encoding):
 
@@ -197,11 +213,10 @@ dotnet run
 
 ## Next steps
 
-1. iOS ingestion via Shortcuts
-2. A way to trigger "mark tested + note" without hand-built requests (a Shortcut or minimal UI)
-3. A way to browse existing recipes (a Shortcut output or minimal UI)
-4. A way to submit an adjusted version (ingredients/steps) without hand-typing JSON — likely needs real UI, unlike 2/3
-5. opencode.ai IRecipeExtractor implementation
-6. Broader prompt testing (other languages, messier source posts)
-7. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
-8. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current iOS ingestion work
+1. Browse existing recipes from `MiseRecipeExtractor.Web` (list + detail view, using the already-written `getRecipes()` in `api.ts`)
+2. A way to trigger "mark tested + note" from `Web`, without hand-built requests
+3. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
+4. opencode.ai IRecipeExtractor implementation
+5. Broader prompt testing (other languages, messier source posts)
+6. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+7. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work

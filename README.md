@@ -108,6 +108,10 @@ Rather than route around this (e.g. hardcoding a fixed number of image fields, o
 
 No Xiaohongshu API exists, and scraping the platform was deliberately ruled out (ToS violations, legal exposure, fragile reverse-engineering). The planned approach: treat video the same as screenshots — accept whatever file the user has already extracted themselves (manual save, screen recording, or a share link), keeping the app in "processes content the user already has" territory rather than "accesses the platform directly."
 
+Mechanically: extract representative still frames from the video server-side (via ffmpeg, likely through the `FFMpegCore` .NET wrapper), feeding those frames into the *existing* `List<byte[]> images` pipeline `IRecipeExtractor` already accepts — no change to that interface at all, just a new preprocessing step ahead of it. Real open questions before building: frame-selection strategy (how many frames, spaced how — too many re-triggers the Anthropic request-size limit already hit and fixed for screenshot batches), whether `ffmpeg` is installed separately or bundled via a platform-specific NuGet package, and the new request/endpoint shape for a video upload (distinct from `CreateExtractionRequest`).
+
+Worth bundling into this same effort: photo resizing/compression for ordinary screenshot uploads too, not just video frames. A 13-image screenshot batch already hit Anthropic's 32 MB per-request limit (see "Known open items"); extracted video frames are just as likely to hit the same ceiling. Since this work already means adding server-side image-handling logic (whichever library ends up decoding/resizing video frames), the same code can size-check and resize oversized photo uploads before they ever reach `AnthropicRecipeExtractor`.
+
 ## Conversational recipe editing (future scope)
 
 Longer-term idea: a chat-style interface for editing recipes conversationally (e.g. "make this vegetarian," "double the recipe," "is this already in my collection?"), rather than only a structured edit form.
@@ -150,6 +154,7 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - EF Core migration drift: `Warnings` was added to `RecipeVersion` with no migration ever generated for it, causing a runtime `SQLite Error 1: no column named Warnings` on recipe creation. Fixed via `dotnet ef migrations add` + `database update`. Nothing currently catches this automatically — worth periodically checking `dotnet ef migrations has-pending-model-changes` after model changes.
 - `EfRecipeRepository.UpdateAsync` bug (found and fixed): adding a *new* `RecipeVersion` (with new `Ingredient`/`Step` children) to an already-tracked `Recipe` caused EF Core to mistakenly mark the new children `Modified` instead of `Added`, because change detection auto-tracks them (via the shared `Guid`-keyed identity map) before the reconciliation loop's own logic runs — producing `UPDATE`s for rows that were never inserted. Fixed by checking each version's existence directly against the database (`AnyAsync`) rather than trusting in-memory tracked state, and explicitly forcing `EntityState.Added` on a version's `Ingredients`/`Steps` only when it's genuinely new. `MarkTested`'s tests re-verified to confirm the fix didn't regress the "update fields on an already-persisted version" path.
 - `MiseRecipeExtractor.Web`'s `api.ts` hardcodes `API_BASE_URL` to the current LAN IP address, and `Api`'s CORS policy hardcodes the matching allowed origins. If the PC's LAN IP changes (DHCP reassignment), both need manual updating together, or requests will fail — the CORS failure mode is a somewhat cryptic browser console error rather than an obvious one. Not addressed yet; low priority for a single-user LAN setup, but worth a note if this ever moves beyond that.
+- `AnthropicRecipeExtractor.ExtractAsync` previously threw `HttpRequestException` using the single-argument constructor, which never populates `.StatusCode` — meaning `ExtractionsController` couldn't distinguish a 413 (request too large) from any other failure. Fixed by using the constructor overload that accepts a status code explicitly. `ExtractionsController` now catches this case specifically and returns a clean 413 with a readable message (surfaced correctly in `Web` after also fixing `submitExtraction` to read the response body, not just the status code, on failure) instead of an unhandled exception crashing the request. No compression/resizing exists yet to avoid hitting this limit in the first place — a 13-image screenshot batch reliably triggers it; see "Video ingestion" for where that work is now planned.
 
 ## Running locally
 
@@ -214,6 +219,7 @@ dotnet run
 
 ## Next steps
 
+1. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
 1. A way to trigger "mark tested + note" from `Web`, without hand-built requests
 2. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
 3. opencode.ai IRecipeExtractor implementation

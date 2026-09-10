@@ -31,7 +31,10 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
         {
             var errorBody = await response.Content.ReadAsStringAsync();
             throw new HttpRequestException(
-                $"Anthropic API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}");
+                $"Anthropic API returned {(int)response.StatusCode} {response.StatusCode}: {errorBody}",
+                inner: null,
+                statusCode: response.StatusCode);
+
         }
 
         var responseJson = await response.Content.ReadFromJsonAsync<JsonObject>()

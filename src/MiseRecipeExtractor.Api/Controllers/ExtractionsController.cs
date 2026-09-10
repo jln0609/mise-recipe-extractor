@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 using MiseRecipeExtractor.Api.Dtos;
 using MiseRecipeExtractor.Core.Entities;
 using MiseRecipeExtractor.Core.UseCases;
@@ -20,8 +21,16 @@ public class ExtractionsController(ExtractAndCreateRecipeCommand extractCommand)
             images.Add(stream.ToArray());
         }
 
-        Recipe recipe = await extractCommand.ExecuteAsync(images, request.Platform, request.SourceUrl);
-        
-        return CreatedAtAction("GetById", "Recipes", new { id = recipe.Id }, RecipeResponseMapper.ToResponse(recipe));
+        try
+        {
+            Recipe recipe = await extractCommand.ExecuteAsync(images, request.Platform, request.SourceUrl);
+            return CreatedAtAction("GetById", "Recipes", new { id = recipe.Id },
+                RecipeResponseMapper.ToResponse(recipe));
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge,
+                "The selected images are too large for extraction. Try fewer images or smaller files.");
+        }
     }
 }

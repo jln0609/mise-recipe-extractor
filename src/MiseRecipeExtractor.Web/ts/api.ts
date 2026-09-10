@@ -42,7 +42,9 @@ export async function submitExtraction(request: ExtractionRequest): Promise<Reci
     
     const response = await fetch(`${API_BASE_URL}/api/extractions`, {method: "POST", body: formData});
     if (!response.ok) {
-        throw new Error(`Failed to submit extraction requesst: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `Failed to submit extraction request: ${response.status}`);
+
     }
     return response.json();
 }

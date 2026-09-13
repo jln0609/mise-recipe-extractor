@@ -16,7 +16,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - `EfRecipeRepository` implements `IRecipeRepository` against `RecipeDbContext`, using `ComplexProperty` (not `OwnsOne`) for value objects (`LocalizedText`, `Quantity`, `SourceMetadata`), eager loading via `Include`/`ThenInclude`, and split-query behavior configured to avoid cartesian-product query blow-up across sibling collections (`Ingredients`/`Steps`)
 - `AnthropicRecipeExtractor` implements `IRecipeExtractor` via a direct call to the Anthropic Messages API, using tool-use (schema-constrained structured output) rather than prose-parsed JSON. Tested end-to-end against a real, moderately complex 4-image Xiaohongshu recipe post (mixed Chinese text, ingredient substitution notes, storage instructions) via a standalone sandbox console app (`tools/MiseRecipeExtractor.Sandbox`). Results: correct language detection, sensible translations, correct `ConfidenceLevel` assignment (explicit gram amounts vs. a genuinely vague "适量"/"appropriate amount" ingredient), successful multi-image merging into one coherent recipe, and useful, substantive entries in `Warnings` (a cross-referenced cut-off text recovered from a second image; a text/photo discrepancy noted; a recipe-yield-vs-photo discrepancy noted). Sample output and cost data: [`docs/sample-extraction-260829.md`](docs/sample-extraction-260829.md).
 - **`POST /api/extractions` implemented and verified end-to-end**: multipart image upload → `ExtractionsController` → `ExtractAndCreateRecipeCommand` (Core use case) → `AnthropicRecipeExtractor` → `Recipe`/`RecipeVersion` construction (correct `VersionNumber` via `Recipe.AddVersion`, `DetectedSourceLanguage` → `SourceMetadata.OriginalLanguage`) → `EfRecipeRepository` persistence → returned as `RecipeResponse`. Confirmed the persisted recipe round-trips correctly through the separate `GET /api/recipes` endpoint too. Tested from a clean clone on a different machine than where it was built.
-- **21 tests across all four projects.** `Api.IntegrationTests`: extraction/recipe round trips (via `WebApplicationFactory` + in-memory SQLite + `FakeRecipeExtractor`), 404s, list retrieval. `Infrastructure.Tests`: `EfRecipeRepository` CRUD, `UpdateAsync` reconciliation, cascade delete, not-found handling. `AI.Tests`: `AnthropicRecipeExtractor` via a fake `HttpMessageHandler` — response mapping, image-format handling, malformed-response errors, confidence-level fallback.
+- **35 tests across all four projects.** `Api.IntegrationTests`: extraction/recipe round trips (via `WebApplicationFactory` + in-memory SQLite + `FakeRecipeExtractor`), 404s, list retrieval, plus the mark-tested/versions/delete endpoints itemized below. `Infrastructure.Tests`: `EfRecipeRepository` CRUD, `UpdateAsync` reconciliation, cascade delete, not-found handling. `AI.Tests`: `AnthropicRecipeExtractor` via a fake `HttpMessageHandler` — response mapping, image-format handling, malformed-response errors, confidence-level fallback.
 - `PATCH /api/recipes/{id}/tested` implemented and tested (manual + 3 integration tests): marks a recipe's current version `Tested`, sets `Notes`, persists, and round-trips via a separate `GET`.
 - `POST /api/recipes/{id}/versions` implemented and tested (manual + 3 integration tests): submits a manually-edited title/ingredients/steps, creates a new `RecipeVersion` via `Recipe.AddVersion` with status `Adjusted`, persists, and round-trips via a separate `GET`.
 - `GET /api/recipes/{id}/versions` and `GET /api/recipes/{id}/versions/{versionNumber}` implemented and tested (manual + 5 integration tests): return full version detail (title, ingredients, steps, warnings, notes) for all versions of a recipe, or one specific version by number. Confirms older versions remain untouched when a new version is added.
@@ -33,7 +33,7 @@ This project follows a **Hexagonal (Ports & Adapters) architecture**, not a trad
 ```
 src/
 - MiseRecipeExtractor.Core/            — domain entities, value objects, interfaces (ports). No external dependencies.
-- MiseRecipeExtractor.Infrastructure/  — persistence adapter (EF Core, coming next). Depends on Core.
+- MiseRecipeExtractor.Infrastructure/  — persistence adapter (EF Core + SQLite). Depends on Core.
 - MiseRecipeExtractor.AI/              — AI extraction adapter (Anthropic API). Depends on Core.
 - MiseRecipeExtractor.Api/             — ASP.NET Core Web API. Composition root + driving adapter. Depends on Core, Infrastructure, AI.
 - MiseRecipeExtractor.Web/             — static-file host serving the front end. No project references; calls Api over HTTP.
@@ -93,7 +93,7 @@ Value objects:
 
 - **`AnthropicRecipeExtractor`** — direct call to the Anthropic Messages API (C#, `HttpClient`), using tool-use for schema-constrained structured output. Billed per-token via standard API credits. **Implemented and validated against real data** (see "What's working right now" above).
 - **`AgentSdkRecipeExtractor`** — uses Anthropic's Agent SDK (officially Python/TypeScript only) to draw on the separate monthly Agent SDK credit bundled with a Pro/Max subscription, rather than pay-per-token billing. Since the Agent SDK has no official .NET package, this adapter wraps a small TypeScript process, called from its C# implementation of `IRecipeExtractor`.
-- opencode.ai investigated as a potential third `IRecipeExtractor` adapter (multi-model gateway) — see [`docs/opencode-260902.md`](docs/opencode-investigation-260902.md). Tool-use confirmed working via `deepseek-v4-flash`; Claude models currently broken on this gateway (external issue, not ours). Not yet built.
+- opencode.ai investigated as a potential third `IRecipeExtractor` adapter (multi-model gateway) — see [`docs/opencode-investigation-260902.md`](docs/opencode-investigation-260902.md). Tool-use confirmed working via `deepseek-v4-flash`; Claude models currently broken on this gateway (external issue, not ours). Not yet built.
 
 The direct API version was built and validated first (simpler, keeps prompt/schema/parsing work in one language while that gets nailed down); the Agent SDK version follows.
 
@@ -220,9 +220,9 @@ dotnet run
 ## Next steps
 
 1. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
-1. A way to trigger "mark tested + note" from `Web`, without hand-built requests
-2. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
-3. opencode.ai IRecipeExtractor implementation
-4. Broader prompt testing (other languages, messier source posts)
-5. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
-6. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work
+2. A way to trigger "mark tested + note" from `Web`, without hand-built requests
+3. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
+4. opencode.ai IRecipeExtractor implementation
+5. Broader prompt testing (other languages, messier source posts)
+6. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+7. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work

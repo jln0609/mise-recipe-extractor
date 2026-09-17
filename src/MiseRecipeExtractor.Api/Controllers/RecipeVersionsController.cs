@@ -40,7 +40,7 @@ public class RecipeVersionsController(CreateAdjustedVersionCommand command, IRec
     }
 
     [HttpGet("{versionNumber:int}")]
-    public async Task<ActionResult<RecipeVersionResponse>> GetByVerionNumber(Guid id, int versionNumber)
+    public async Task<ActionResult<RecipeVersionResponse>> GetByVersionNumber(Guid id, int versionNumber)
     {
         Recipe? recipe = await repository.GetByIdAsync(id);
         if (recipe == null)

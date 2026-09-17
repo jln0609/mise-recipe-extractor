@@ -22,7 +22,7 @@ public class RecipeVersionResponseMapper
                 QuantityConfidence = i.Quantity.Confidence.ToString(),
                 Notes = i.Notes
             }).ToList(),
-            Steps = version.Steps.Select(s => new StepDto
+            Steps = version.Steps.OrderBy(s => s.Order).Select(s => new StepDto
             {
                 Order = s.Order,
                 TextOriginal = s.Text.Original,

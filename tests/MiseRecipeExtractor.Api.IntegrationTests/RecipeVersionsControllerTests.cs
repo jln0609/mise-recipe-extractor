@@ -261,6 +261,50 @@ public class RecipeVersionsControllerTests : IClassFixture<CustomWebApplicationF
     }
 
     [Fact]
+    public async Task GetVersionByNumber_ReturnsStepsSortedByOrder_RegardlessOfInsertionOrder()
+    {
+        // arrange
+        var createRequest = new CreateRecipeRequest
+        {
+            Platform = "Xiaohongshu",
+            TitleOriginal = "南瓜饼",
+            TitleTranslated = "Pumpkin Cake"
+        };
+
+        HttpResponseMessage postResponse = await _client.PostAsJsonAsync("/api/recipes", createRequest);
+        RecipeResponse? created = await postResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(created);
+        
+        var adjustedRequest = new CreateAdjustedVersionRequest
+        {
+            TitleOriginal = "南瓜饼",
+            TitleTranslated = "Pumpkin Cake",
+            Ingredients = new List<IngredientDto>(),
+            Steps = new List<StepDto>
+            {
+                new() { Order = 2, TextOriginal = "压成饼状", OrderIsInferred = false },
+                new() { Order = 1, TextOriginal = "南瓜蒸熟捣成泥", OrderIsInferred = false },
+                new() { Order = 3, TextOriginal = "煎至两面金黄", OrderIsInferred = false }
+            }
+        };
+
+        await _client.PostAsJsonAsync($"/api/recipes/{created.Id}/versions", adjustedRequest);
+
+        // act
+        HttpResponseMessage response = await _client.GetAsync($"/api/recipes/{created.Id}/versions/2");
+
+        // assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        RecipeVersionResponse? version2 = await response.Content.ReadFromJsonAsync<RecipeVersionResponse>();
+        Assert.NotNull(version2);
+        Assert.Equal(new[] { 1, 2, 3 }, version2.Steps.Select(s => s.Order));
+        Assert.Equal("南瓜蒸熟捣成泥", version2.Steps[0].TextOriginal);
+        Assert.Equal("压成饼状", version2.Steps[1].TextOriginal);
+        Assert.Equal("煎至两面金黄", version2.Steps[2].TextOriginal);
+    }
+
+    [Fact]
     public async Task GetVersionByNumber_NonExistentVersionNumber_ReturnsNotFound()
     {
         // arrange

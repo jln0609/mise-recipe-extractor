@@ -14,7 +14,7 @@ export interface Recipe {
     notes: string | null;
 }
 
-const API_BASE_URL = "http://192.168.1.198:5249";
+const API_BASE_URL = "http://192.168.1.229:5249";
 
 export async function getRecipes(): Promise<Recipe[]> {
     const response = await fetch(`${API_BASE_URL}/api/recipes`);

@@ -15,4 +15,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      // Dev only: dowards /api/* to the ASP.NET Core API.
+      '/api' : {
+        target: 'http://localhost:5249',
+        changeOrigin: true,
+      },
+    },
+  },
 })

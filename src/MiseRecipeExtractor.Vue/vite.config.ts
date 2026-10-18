@@ -16,6 +16,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     proxy: {
       // Dev only: dowards /api/* to the ASP.NET Core API.
       '/api' : {

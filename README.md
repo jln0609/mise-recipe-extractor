@@ -25,6 +25,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - **Reachable from other devices on the same Wi-Fi network**: Kestrel's `applicationUrl` in `launchSettings.json` changed from `localhost` to `0.0.0.0` (binds to all network interfaces, not just loopback) across all three profiles. Requires port 5249 to be opened for inbound traffic. Verified end-to-end: phone browser on the same Wi-Fi successfully hits `GET /api/recipes` against the PC's LAN IP.
 - **`MiseRecipeExtractor.Web`**: a small static-file host project (plain HTML/TypeScript, no framework or bundler — native ES modules) serving a recipe-extraction upload form. Verified end-to-end from a phone on the same Wi-Fi network: selects screenshots via the browser's native multi-file picker, POSTs them as multipart form data to `/api/extractions`, and displays the resulting recipe title. Required a Cross-Origin Resource Sharing (CORS) policy on `Api` allowing the `Web` app's origins.
 - **Recipe browsing in `MiseRecipeExtractor.Web`**: `recipes.html` lists all recipes (title, linking to detail); `recipe.html` shows a specific recipe's ingredients, steps, notes (hidden when absent), and warnings (hidden when absent), with a version dropdown that re-fetches and re-renders a different `RecipeVersion` in place, no page reload. Uses `GET /api/recipes`, `GET /api/recipes/{id}/versions`, and `GET /api/recipes/{id}/versions/{versionNumber}`. Verified end-to-end in-browser.
+- **`MiseRecipeExtractor.Vue`** (`vue-frontend` branch): Vue 3 + TypeScript + Vite rewrite of the browsing pages. Recipe list and read-only detail (latest version) working via Vite's dev proxy; sticky header with Mise logo. Verified from an iPhone on the same Wi-Fi, with no CORS or LAN-IP config needed, since the phone only talks to Vite.
 
 ## Architecture
 
@@ -37,6 +38,7 @@ src/
 - MiseRecipeExtractor.AI/              — AI extraction adapter (Anthropic API). Depends on Core.
 - MiseRecipeExtractor.Api/             — ASP.NET Core Web API. Composition root + driving adapter. Depends on Core, Infrastructure, AI.
 - MiseRecipeExtractor.Web/             — static-file host serving the front end. No project references; calls Api over HTTP.
+- MiseRecipeExtractor.Vue/             — Vue 3 front end (Vite). No project references; calls Api over HTTP via Vite's dev proxy.
 
 tests/
 - MiseRecipeExtractor.Core.Tests/
@@ -51,7 +53,7 @@ tests/
 Core  ←  Infrastructure
 Core  ←  AI
 Core, Infrastructure, AI  ←  Api  (composition root)
-Web is not part of this graph — a separate process calling Api over HTTP.
+Web/Vue are not part of this graph — a separate process calling Api over HTTP.
 ```
 
 `Core` defines two ports so far:
@@ -130,6 +132,7 @@ This is a deliberately different problem from the structured extraction pipeline
 
 - AI provider: currently Anthropic's API; opencode.ai adapter planned
 - **TypeScript**, compiled via `tsc`, no bundler — `MiseRecipeExtractor.Web`'s front end
+- **Vue 3** + TypeScript + **Vite** — `MiseRecipeExtractor.Vue` (Vue Router, Vitest scaffolded)
 
 
 ## Why ASP.NET Core
@@ -158,7 +161,11 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `AnthropicRecipeExtractor.ExtractAsync` previously threw `HttpRequestException` using the single-argument constructor, which never populates `.StatusCode` — meaning `ExtractionsController` couldn't distinguish a 413 (request too large) from any other failure. Fixed by using the constructor overload that accepts a status code explicitly. `ExtractionsController` now catches this case specifically and returns a clean 413 with a readable message (surfaced correctly in `Web` after also fixing `submitExtraction` to read the response body, not just the status code, on failure) instead of an unhandled exception crashing the request. No compression/resizing exists yet to avoid hitting this limit in the first place — a 13-image screenshot batch reliably triggers it; see "Video ingestion" for where that work is now planned.
 - Canonical-unit normalization (see "Regionally ambiguous measures") is enforced **only** by the system prompt and the tool schema's field descriptions — guidance the model can ignore, since constrained decoding enforces just `type`/`enum`/`required`. Nothing validates the `unit` that comes back, so a response using `"tbsp"` reintroduces the ambiguity undetected, and the convention assumed is recorded as warning prose rather than structurally (a `unitSystem` field on `Quantity` was rejected — it needs a migration and pushes conversion onto every consumer). `Web` also displays the normalized value, so "2 tbsp" renders as "30mL" (`recipe.ts` prefers `amount`+`unit` over `originalText`), and `CreateAdjustedVersionRequestMapper` doesn't normalize hand-typed units. A deterministic normalizer in `Core` is the obvious follow-up.
 - `RecipeVersionResponseMapper` bug (found and fixed): steps rendered in DB insertion order, not their logical `Order` field, since nothing in the read path sorted by it. Fixed by sorting `version.Steps` by `Order` in the mapper, the one chokepoint all version-returning endpoints share.
-- `MiseRecipeExtractor.Vue`: `npm audit` reports 4 "high" findings that are one issue — `braces` (GHSA-vfj7-8cjw-p6xm, stack-exhaustion denial of service via deeply nested patterns), pulled in via `@vue/eslint-config-typescript` → `fast-glob` → `micromatch`. Dev-only lint tooling processing our own config patterns; never shipped to the browser and not reachable by untrusted input. `npm audit fix --force` would *downgrade* the ESLint config to 14.0.1 (breaking). Deliberately deferred pending an upstream fix; recheck with `npm audit` after `npm update`.
+- `RecipeVersion.CreatedAt` comes back from SQLite without a UTC marker, so JavaScript would show it shifted to local time. Not displayed anywhere yet; fix with an EF Core value converter.
+- `npm audit` in `MiseRecipeExtractor.Vue` reports 4 "high" findings: one `braces` DoS issue (GHSA-vfj7-8cjw-p6xm) in dev-only lint tooling, not reachable by untrusted input. `audit fix --force` would downgrade the ESLint config, so it's deferred until an upstream fix lands.
+- `MiseRecipeExtractor.Vue` relies on Vite's dev proxy for `/api/*` (relative URLs). A production build would need same-origin hosting via Api (`MapFallbackToFile`, excluding `/api/*`) or a configured base URL.
+- Ingredient DTOs have no `id`, so the Vue views key ingredients by index. Fine read-only; an editor will need real ids.
+- Found and fixed: a `;key` typo (for `:key`) rendered fine in Chromium but broke the list on iPhone Safari, which rejects `;` in attribute names (`setAttribute` throws). Test on Safari too.
 
 ## Running locally
 
@@ -179,6 +186,16 @@ dotnet run --project src/MiseRecipeExtractor.Web
 ```
 
 Listens on `http://localhost:5081`.
+
+`MiseRecipeExtractor.Vue` (requires the API running):
+
+```powershell
+cd src/MiseRecipeExtractor.Vue
+npm install
+npm run dev
+```
+
+Listens on `http://localhost:5173`. `server.host: true` in `vite.config.ts` exposes it on the LAN (see Vite's "Network" URL).
 
 Example request (PowerShell — note: explicit UTF-8 byte conversion is required for non-ASCII text to survive the request correctly; passing a raw string to `-Body` can silently mangle Chinese characters depending on console encoding):
 
@@ -223,10 +240,11 @@ dotnet run
 
 ## Next steps
 
-1. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
-2. A way to trigger "mark tested + note" from `Web`, without hand-built requests
-3. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
-4. opencode.ai IRecipeExtractor implementation
-5. Broader prompt testing (other languages, messier source posts)
-6. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
-7. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work
+1. Vue front end: version dropdown, child components, extraction view (`/extract`)
+2. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
+3. A way to trigger "mark tested + note" from `Web`, without hand-built requests
+4. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
+5. opencode.ai IRecipeExtractor implementation
+6. Broader prompt testing (other languages, messier source posts)
+7. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+8. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work

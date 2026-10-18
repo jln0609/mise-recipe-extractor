@@ -25,7 +25,7 @@ onMounted(async () => {
         <p v-else-if="error">Could not load recipes: {{ error }}</p>
         <p v-else-if="recipes.length === 0">No recipes yet.</p>
         <ul v-else>
-            <li v-for="recipe in recipes" ;key="recipe.id">
+            <li v-for="recipe in recipes" :key="recipe.id">
                 <RouterLink :to="`/recipes/${recipe.id}`">
                     {{ recipe.titleTranslated ?? recipe.titleOriginal }}
                 </RouterLink>

@@ -25,7 +25,7 @@ The name comes from *mise en place* — having everything in its place before yo
 - **Reachable from other devices on the same Wi-Fi network**: Kestrel's `applicationUrl` in `launchSettings.json` changed from `localhost` to `0.0.0.0` (binds to all network interfaces, not just loopback) across all three profiles. Requires port 5249 to be opened for inbound traffic. Verified end-to-end: phone browser on the same Wi-Fi successfully hits `GET /api/recipes` against the PC's LAN IP.
 - **`MiseRecipeExtractor.Web`**: a small static-file host project (plain HTML/TypeScript, no framework or bundler — native ES modules) serving a recipe-extraction upload form. Verified end-to-end from a phone on the same Wi-Fi network: selects screenshots via the browser's native multi-file picker, POSTs them as multipart form data to `/api/extractions`, and displays the resulting recipe title. Required a Cross-Origin Resource Sharing (CORS) policy on `Api` allowing the `Web` app's origins.
 - **Recipe browsing in `MiseRecipeExtractor.Web`**: `recipes.html` lists all recipes (title, linking to detail); `recipe.html` shows a specific recipe's ingredients, steps, notes (hidden when absent), and warnings (hidden when absent), with a version dropdown that re-fetches and re-renders a different `RecipeVersion` in place, no page reload. Uses `GET /api/recipes`, `GET /api/recipes/{id}/versions`, and `GET /api/recipes/{id}/versions/{versionNumber}`. Verified end-to-end in-browser.
-- **`MiseRecipeExtractor.Vue`** (`vue-frontend` branch): Vue 3 + TypeScript + Vite rewrite of the browsing pages. Recipe list and detail via Vite's dev proxy; sticky header with Mise logo. Ingredient sort toggle (source/A–Z, saved in `localStorage`), version dropdown (selection in URL as `?v=N`), collapsible warnings. Verified from an iPhone on the same Wi-Fi, with no CORS or LAN-IP config needed, since the phone only talks to Vite.
+- **`MiseRecipeExtractor.Vue`** (`vue-frontend` branch): Vue 3 + TypeScript + Vite rewrite of the browsing pages. Recipe list and detail via Vite's dev proxy; sticky header with Mise logo. Ingredient sort toggle (source/A–Z, saved in `localStorage`), version dropdown (selection in URL as `?v=N`), collapsible warnings. Extraction view (`/extract`): screenshot upload with platform and optional source URL, loading/error states, navigates to the new recipe.
 
 ## Architecture
 
@@ -169,6 +169,7 @@ The trade-off: more ceremony around async orchestration and DI container setup t
 - `Ingredient` has no `Order` field, so source order isn't persisted (relies on SQLite return order). Fix: add `Ingredient.Order`, set at extraction, sort in the mapper.
 - Vue's `useLocalStorage` is string-only; settings are per browser and origin (`localhost` vs. LAN IP differ).
 - Vue: an invalid `?v` falls back to the latest version but stays in the URL.
++ - Unsupported image formats (e.g. a `.md` uploaded to `/api/extractions`) throw an unhandled `NotSupportedException` from `AnthropicRecipeExtractor.DetectMediaType`. In Development this returns a 500 with the full stack trace and request headers in the body; in Production, a bare 500 with no message. It should be a 4xx with a readable message.
 
 
 
@@ -245,11 +246,10 @@ dotnet run
 
 ## Next steps
 
-1. Vue front end: extraction view (`/extract`)
-2. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
-3. A way to trigger "mark tested + note" from `Web`, without hand-built requests
-4. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
-5. opencode.ai IRecipeExtractor implementation
-6. Broader prompt testing (other languages, messier source posts)
-7. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
-8. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work
+1. Video ingestion: see "Video ingestion" section for the planned approach (ffmpeg frame extraction feeding the existing `IRecipeExtractor` pipeline unchanged)
+2. A way to trigger "mark tested + note" from `Web`, without hand-built requests
+3. A way to submit an adjusted version (ingredients/steps) from `Web`, without hand-typing JSON
+4. opencode.ai IRecipeExtractor implementation
+5. Broader prompt testing (other languages, messier source posts)
+6. `AgentSdkRecipeExtractor` (TypeScript, Agent SDK)?
+7. Meshnet/Tailscale-style reachability (works off the home network) — deferred for now; same-Wi-Fi reachability is sufficient for current phone-ingestion work

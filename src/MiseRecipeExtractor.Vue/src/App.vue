@@ -9,6 +9,9 @@ import { RouterLink, RouterView } from 'vue-router'
       <img src="@/assets/mise-logo.svg" alt="" width="36" height="36" />
       <span>Mise</span>
     </RouterLink>
+    <nav class="site-nav">
+      <RouterLink to="/extract">Extract</RouterLink>
+    </nav>
   </header>
 
   <div class="page">
@@ -24,6 +27,10 @@ import { RouterLink, RouterView } from 'vue-router'
   padding: 0.75rem 1.5rem;
   background-color: var(--color-background);
   border-bottom: 1px solid var(--color-border);
+}
+
+.site-nav a.router-link-active {
+  font-weight: 600;
 }
 
 .brand {
@@ -46,4 +53,5 @@ import { RouterLink, RouterView } from 'vue-router'
   margin: 0 auto;
   padding: 1.5rem;
 }
+
 </style>

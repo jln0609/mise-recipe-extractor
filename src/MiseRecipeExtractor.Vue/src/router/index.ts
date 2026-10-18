@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import RecipeListView from '@/views/RecipeListView.vue'
+import ExtracyView from '@/views/ExtractView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +15,11 @@ const router = createRouter({
       name: 'recipe',
       component: () => import('@/views/RecipeDetailView.vue'),
       props: true,
+    },
+    {
+      path: '/extract',
+      name: 'extract',
+      component: () => import('@/views/ExtractView.vue')
     },
   ],
 })

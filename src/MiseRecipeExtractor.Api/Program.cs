@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowMiseWeb", policy =>
     {
-        policy.WithOrigins("http://localhost:5081", "http://192.168.1.198:5081")
+        policy.WithOrigins("http://localhost:5081", "http://192.168.1.229:5081")
             .AllowAnyMethod()
             .AllowAnyHeader();
     });

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Mise logo">
+  <!-- Mise en place: small prep bowls laid out on a cutting board, seen from above -->
+  <rect x="6" y="14" width="84" height="68" rx="14" fill="#C8935A"/>
+  <rect x="10" y="18" width="76" height="60" rx="11" fill="none" stroke="#B07D48" stroke-width="1.5"/>
+
+  <g stroke="#7A5530" stroke-width="2" fill="#F6F1E8">
+    <circle cx="32" cy="38" r="15"/>
+    <circle cx="74" cy="32" r="8"/>
+    <circle cx="58" cy="60" r="12"/>
+    <circle cx="27" cy="66" r="9"/>
+  </g>
+
+  <circle cx="32" cy="38" r="10" fill="#6A9A4B"/>
+  <circle cx="74" cy="32" r="4.5" fill="#5B3A29"/>
+  <circle cx="58" cy="60" r="7.5" fill="#E8B634"/>
+  <circle cx="27" cy="66" r="5" fill="#D2553F"/>
+</svg>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getRecipeVersions, type RecipeVersion } from '@/api/recipes'
+import IngredientList from '@/components/IngredientList.vue';
+import StepList from '@/components/StepList.vue';
 
 const props = defineProps<{ id: string }>()
 
@@ -31,34 +33,42 @@ onMounted(async () => {
             <h1>{{ latestVersion.titleTranslated ?? latestVersion.titleOriginal  }}</h1>
             <p v-if="latestVersion.titleTranslated">{{ latestVersion.titleOriginal }}</p>
 
-            <h2>Ingredients</h2>
-            <ul>
-                <!-- Index key: the ingredient DTO has no id, and this list is read-only. -->
-                <li v-for="(ingredient, index) in latestVersion.ingredients" :key="index">
-                    {{ ingredient.nameTranslated ?? ingredient.nameOriginal }}:
-                    {{ ingredient.quantityOriginalText }}
-                    <span v-if="ingredient.notes">({{ ingredient.notes }})</span>
-                </li>
-            </ul>
+            <IngredientList v-bind:ingredients="latestVersion.ingredients" />
 
-            <h2>Steps</h2>
-            <ol>
-                <li v-for="step in latestVersion.steps" :key="step.order">
-                    {{ step.textTranslated ?? step.textOriginal }}
-                </li>
-            </ol>
+            <StepList v-bind:steps="latestVersion.steps" />
 
             <template v-if="latestVersion.notes">
                 <h2>Notes</h2>
                 <p>{{ latestVersion.notes }}</p>
             </template>
 
-            <template v-if="latestVersion.warnings.length > 0">
-                <h2>Warnings</h2>
+            <details v-if="latestVersion.warnings.length > 0" class="extraction-warnings">
+                <summary>Extraction warnings ({{ latestVersion.warnings.length }})</summary>
                 <ul>
-                    <li v-for="(warning, index) in latestVersion.warnings" :key="index">{{ warning }}</li>
+                    <li v-for="(warning, index) in latestVersion.warnings" v-bind:key="index">{{ warning }}</li>
                 </ul>
-            </template>
+            </details>
         </template>
     </main>
 </template>
+
+<style scoped>
+.extraction-warnings {
+    margin-top: 2rem;
+    padding: 0.75rem 1rem;
+    border-left: 4px solid #d97706;
+    background: rgba(217, 119, 6, 0.08);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.extraction-warnings summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.extraction-warnings ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+}
+</style>

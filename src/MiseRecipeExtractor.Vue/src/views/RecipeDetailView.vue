@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { getRecipeVersions, type RecipeVersion } from '@/api/recipes'
 import { useSelectedVersion } from '@/composables/useSelectedVersion';
 import IngredientList from '@/components/IngredientList.vue';

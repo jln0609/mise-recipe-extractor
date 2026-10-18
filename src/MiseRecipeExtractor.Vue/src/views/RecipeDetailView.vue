@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { getRecipeVersions, type RecipeVersion } from '@/api/recipes'
+import { useSelectedVersion } from '@/composables/useSelectedVersion';
 import IngredientList from '@/components/IngredientList.vue';
 import StepList from '@/components/StepList.vue';
 
@@ -10,7 +11,7 @@ const versions = ref<RecipeVersion[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const latestVersion = computed<RecipeVersion | null> (() => [...versions.value].sort((a,b) => b.versionNumber - a.versionNumber)[0] ?? null,)
+const { versionsNewestFirst, latestVersion, selectedVersion, selectedVersionNumber } = useSelectedVersion(versions)
 
 onMounted(async () => {
     try {
@@ -27,25 +28,39 @@ onMounted(async () => {
 
         <p v-if="loading">Loading…</p>
         <p v-else-if="error">Could not load recipe: {{ error }}</p>
-        <p v-else-if="!latestVersion">This recipe has no versions.</p>
+        <p v-else-if="!selectedVersion">This recipe has no versions.</p>
 
         <template v-else>
-            <h1>{{ latestVersion.titleTranslated ?? latestVersion.titleOriginal  }}</h1>
-            <p v-if="latestVersion.titleTranslated">{{ latestVersion.titleOriginal }}</p>
+            <h1>{{ selectedVersion.titleTranslated ?? selectedVersion.titleOriginal  }}</h1>
+            <p v-if="selectedVersion.titleTranslated">{{ selectedVersion.titleOriginal }}</p>
 
-            <IngredientList v-bind:ingredients="latestVersion.ingredients" />
+            <select
+                v-if="versions.length > 1"
+                v-model="selectedVersionNumber"
+                aria-label="Recipe version"
+            >
+                <option
+                    v-for="version in versionsNewestFirst"
+                    :key="version.versionNumber"
+                    :value="version.versionNumber"
+                >
+                    Version {{ version.versionNumber }}{{ version === latestVersion ? ' (latest)' : '' }}
+                </option>
+            </select>
 
-            <StepList v-bind:steps="latestVersion.steps" />
+            <IngredientList v-bind:ingredients="selectedVersion.ingredients" />
 
-            <template v-if="latestVersion.notes">
+            <StepList v-bind:steps="selectedVersion.steps" />
+
+            <template v-if="selectedVersion.notes">
                 <h2>Notes</h2>
-                <p>{{ latestVersion.notes }}</p>
+                <p>{{ selectedVersion.notes }}</p>
             </template>
 
-            <details v-if="latestVersion.warnings.length > 0" class="extraction-warnings">
-                <summary>Extraction warnings ({{ latestVersion.warnings.length }})</summary>
+            <details v-if="selectedVersion.warnings.length > 0" class="extraction-warnings">
+                <summary>Extraction warnings ({{ selectedVersion.warnings.length }})</summary>
                 <ul>
-                    <li v-for="(warning, index) in latestVersion.warnings" v-bind:key="index">{{ warning }}</li>
+                    <li v-for="(warning, index) in selectedVersion.warnings" v-bind:key="index">{{ warning }}</li>
                 </ul>
             </details>
         </template>

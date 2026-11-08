@@ -5,6 +5,7 @@ public class Quantity
     public double? Amount { get; set; }
     public string? Unit {get; set; }
     public string OriginalText { get; init; } = string.Empty;
+    public string? TranslatedText { get; set; }
     public ConfidenceLevel Confidence { get; set; } = ConfidenceLevel.Unspecified;
 }
 

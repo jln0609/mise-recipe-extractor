@@ -56,6 +56,9 @@ namespace MiseRecipeExtractor.Infrastructure.Migrations
                                 .IsRequired()
                                 .HasColumnType("TEXT");
 
+                            b1.Property<string>("TranslatedText")
+                                .HasColumnType("TEXT");
+
                             b1.Property<string>("Unit")
                                 .HasColumnType("TEXT");
                         });

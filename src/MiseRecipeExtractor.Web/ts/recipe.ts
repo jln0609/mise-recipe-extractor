@@ -19,7 +19,7 @@ function renderVersion(version: RecipeVersion): void {
         const name = ingredient.nameTranslated ?? ingredient.nameOriginal;
         const quantity = ingredient.quantityAmount !== null
             ? `${ingredient.quantityAmount}${ingredient.quantityUnit ?? ""}`
-            : ingredient.quantityOriginalText
+            : ingredient.quantityTranslatedText ?? ingredient.quantityOriginalText
         item.textContent = `${quantity} ${name}`;
         ingredientsList.appendChild(item);
     }

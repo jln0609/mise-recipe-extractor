@@ -20,6 +20,7 @@ public class CreateAdjustedVersionRequestMapper
             Quantity = new Quantity()
             {
                 OriginalText = i.QuantityOriginalText,
+                TranslatedText = i.QuantityTranslatedText,
                 Amount = i.QuantityAmount,
                 Unit = i.QuantityUnit,
                 Confidence = Enum.Parse<ConfidenceLevel>(i.QuantityConfidence)

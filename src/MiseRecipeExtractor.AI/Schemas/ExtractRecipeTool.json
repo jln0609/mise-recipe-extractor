@@ -33,8 +33,9 @@
               "type": "object",
               "properties": {
                 "originalText": { "type": "string" },
+                "translatedText": { "type": ["string", "null"], "description": "English rendering of a word-based quantity (e.g. 'a small half piece' for '小半块'). Null when originalText is already English or purely numeric (e.g. '200g')." },
                 "amount": { "type": ["number", "null"], "description": "Numeric amount, expressed in 'unit'." },
-                "unit": { "type": ["string", "null"], "description": "Canonical unit for 'amount': 'g'/'kg' for mass, 'mL'/'L' for volume, converted from the source's units (see the system prompt for spoon/cup conventions). For item counts, the item word as written (e.g. 'clove')." },
+                "unit": { "type": ["string", "null"], "description": "Canonical unit for 'amount': 'g'/'kg' for mass, 'mL'/'L' for volume, converted from the source's units (see the system prompt for spoon/cup conventions). For item counts, the item word in English (e.g. 'clove', 'piece', 'sheet'); originalText preserves the source wording." },
                 "confidence": {
                   "type": "string",
                   "enum": ["Explicit", "Estimated", "Unspecified"]

@@ -186,6 +186,7 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
         return new Quantity()
         {
             OriginalText = dto.OriginalText,
+            TranslatedText = dto.TranslatedText,
             Amount = dto.Amount,
             Unit = dto.Unit,
             Confidence = confidence
@@ -239,6 +240,7 @@ public class AnthropicRecipeExtractor : IRecipeExtractor
     private class QuantityDto
     {
         public string OriginalText { get; set; } = string.Empty;
+        public string? TranslatedText { get; set; }
         public double? Amount { get; set; }
         public string? Unit { get; set; }
         public string Confidence { get; set; } = string.Empty;

@@ -17,6 +17,7 @@ public class RecipeVersionResponseMapper
                 NameOriginal = i.Name.Original,
                 NameTranslated = i.Name.Translated,
                 QuantityOriginalText = i.Quantity.OriginalText,
+                QuantityTranslatedText = i.Quantity.TranslatedText,
                 QuantityAmount = i.Quantity.Amount,
                 QuantityUnit = i.Quantity.Unit,
                 QuantityConfidence = i.Quantity.Confidence.ToString(),

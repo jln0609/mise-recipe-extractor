@@ -29,6 +29,7 @@
             "name": { "original": "盐", "translated": "Salt" },
             "quantity": {
               "originalText": "适量",
+              "translatedText": "to taste",
               "amount": null,
               "unit": null,
               "confidence": "Unspecified"

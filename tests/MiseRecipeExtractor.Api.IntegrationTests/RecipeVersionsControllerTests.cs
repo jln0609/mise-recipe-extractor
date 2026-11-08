@@ -335,4 +335,51 @@ public class RecipeVersionsControllerTests : IClassFixture<CustomWebApplicationF
         // assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task CreateAdjustedVersion_QuantityTranslatedText_RoundTrips()
+    {
+        // arrange
+        HttpResponseMessage postResponse = await _client.PostAsJsonAsync("/api/recipes",
+            new CreateRecipeRequest { Platform = "Xiaohongshu", TitleOriginal = "红烧肉" });
+        RecipeResponse? created = await postResponse.Content.ReadFromJsonAsync<RecipeResponse>();
+        Assert.NotNull(created);
+
+        var adjustedRequest = new CreateAdjustedVersionRequest
+        {
+            TitleOriginal = "红烧肉",
+            Ingredients = new List<IngredientDto>
+            {
+                new()
+                {
+                    NameOriginal = "姜",
+                    QuantityOriginalText = "小半块",
+                    QuantityTranslatedText = "a small half piece",
+                    QuantityConfidence = "Unspecified"
+                },
+                new()
+                {
+                    NameOriginal = "五花肉",
+                    QuantityOriginalText = "500g",
+                    QuantityAmount = 500,
+                    QuantityUnit = "g",
+                    QuantityConfidence = "Explicit"
+                }
+            },
+            Steps = new List<StepDto>
+            {
+                new() { Order = 1, TextOriginal = "焯水", OrderIsInferred = false }
+            }
+        };
+        await _client.PostAsJsonAsync($"/api/recipes/{created.Id}/versions", adjustedRequest);
+
+        // act
+        HttpResponseMessage response = await _client.GetAsync($"/api/recipes/{created.Id}/versions/2");
+
+        // assert
+        RecipeVersionResponse? version = await response.Content.ReadFromJsonAsync<RecipeVersionResponse>();
+        Assert.NotNull(version);
+        Assert.Equal("a small half piece", version.Ingredients.Single(x => x.NameOriginal == "姜").QuantityTranslatedText);
+        Assert.Null(version.Ingredients.Single(x => x.NameOriginal == "五花肉").QuantityTranslatedText);
+    }
 }

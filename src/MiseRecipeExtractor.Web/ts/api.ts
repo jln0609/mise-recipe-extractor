@@ -56,6 +56,7 @@ export interface Ingredient {
     nameOriginal: string;
     nameTranslated: string | null;
     quantityOriginalText: string;
+    quantityTranslatedText: string | null;
     quantityAmount: number | null;
     quantityUnit: string | null;
     quantityConfidence: string;

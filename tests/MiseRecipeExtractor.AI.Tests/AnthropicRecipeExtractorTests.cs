@@ -71,6 +71,8 @@ public class AnthropicRecipeExtractorTests
         
         Ingredient salt = version.Ingredients[1];
         Assert.Equal("适量", salt.Quantity.OriginalText);
+        Assert.Equal("to taste", salt.Quantity.TranslatedText);
+        Assert.Null(pork.Quantity.TranslatedText);
         Assert.Null(salt.Quantity.Amount);
         Assert.Equal(ConfidenceLevel.Unspecified, salt.Quantity.Confidence);
         

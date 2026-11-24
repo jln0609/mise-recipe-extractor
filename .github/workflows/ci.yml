@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore MiseRecipeExtractor.slnx
+      - run: dotnet build MiseRecipeExtractor.slnx -c Release --no-restore
+      - run: dotnet test MiseRecipeExtractor.slnx -c Release --no-build
+
+  vue:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/MiseRecipeExtractor.Vue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/MiseRecipeExtractor.Vue/package-lock.json
+      - run: npm ci
+      - run: npx oxlint .
+      - run: npx eslint .
+      - run: npm run build
+      - run: npm run test:unit -- --run --passWithNoTests

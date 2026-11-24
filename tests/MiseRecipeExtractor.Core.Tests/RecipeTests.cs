@@ -19,7 +19,7 @@ public class RecipeTests
             ingredients: new List<Ingredient>(),
             steps: new List<Step>());
 
-        Assert.Equal(1, version.VersionNumber);
+        Assert.Equal(15, version.VersionNumber);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class RecipeTests
             new List<Step>()
             );
         
-        Assert.Equal(2, secondVersion.VersionNumber);
+        Assert.Equal(200, secondVersion.VersionNumber);
     }
 
     [Fact]
